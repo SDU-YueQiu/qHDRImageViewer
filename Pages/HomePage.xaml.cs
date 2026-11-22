@@ -119,6 +119,10 @@ public sealed partial class HomePage : Page
     private double _zoomAnimationAnchorY = 0.5;
     private double _zoomAnimationViewportX = 0.5;
     private double _zoomAnimationViewportY = 0.5;
+    private bool _zoomAnchorSkipsCenterBlend;
+    private bool _zoomAnchorLocksImageCenter;
+    private double _zoomLockedAnchorViewportX = 0.5;
+    private double _zoomLockedAnchorViewportY = 0.5;
     private readonly ImagePreloadController _imagePreloads;
     private readonly FilmstripThumbnailController _filmstripThumbnails;
     private readonly ImageLoadController _imageLoads;
@@ -2526,6 +2530,7 @@ public sealed partial class HomePage : Page
         double anchorViewportX,
         double anchorViewportY)
     {
+        ConfigureZoomAnchorForPannedImage(hasAnchor, anchorViewportX, anchorViewportY);
         _hasZoomAnimationAnchor = hasAnchor;
         _zoomAnimationAnchorX = anchorX;
         _zoomAnimationAnchorY = anchorY;
@@ -2543,10 +2548,72 @@ public sealed partial class HomePage : Page
         }
     }
 
+    /// <summary>
+    /// A contained image sits in drag slack, so a pan is a framing the user chose
+    /// on purpose. Zoom must not teleport it back to the middle: keep the pointer
+    /// anchor, and when the pointer is outside the image use the image's own
+    /// centre (anchoring to a clamped image edge would jump as well).
+    /// </summary>
+    private void ConfigureZoomAnchorForPannedImage(
+        bool hasAnchor,
+        double anchorViewportX,
+        double anchorViewportY)
+    {
+        _zoomAnchorSkipsCenterBlend = false;
+        _zoomAnchorLocksImageCenter = false;
+        if (!hasAnchor
+            || _zoomTargetFit
+            || _zoomTargetFill
+            || ImageScroller is null
+            || ImageViewport is null
+            || ImageSurface.Width <= 0.0
+            || ImageSurface.Height <= 0.0)
+        {
+            return;
+        }
+
+        var previewWidth = PreviewSurface.ActualWidth;
+        var previewHeight = PreviewSurface.ActualHeight;
+        // Large images already anchor at the pointer; only a contained image gets
+        // the centre blend this method has to override.
+        if (!ViewerViewportMath.ImageFitsInPreview(
+                ImageSurface.Width, ImageSurface.Height, previewWidth, previewHeight))
+        {
+            return;
+        }
+
+        var offsetX = _layoutScrollX ?? ImageScroller.HorizontalOffset;
+        var offsetY = _layoutScrollY ?? ImageScroller.VerticalOffset;
+        var centeredOffsetX = Math.Max(0.0, (ImageViewport.Width - previewWidth) / 2.0);
+        var centeredOffsetY = Math.Max(0.0, (ImageViewport.Height - previewHeight) / 2.0);
+        if (Math.Abs(offsetX - centeredOffsetX) <= 1.0 && Math.Abs(offsetY - centeredOffsetY) <= 1.0)
+        {
+            return;
+        }
+
+        _zoomAnchorSkipsCenterBlend = true;
+        var imageLeft = Math.Max(0.0, (ImageViewport.Width - ImageSurface.Width) / 2.0) - offsetX;
+        var imageTop = Math.Max(0.0, (ImageViewport.Height - ImageSurface.Height) / 2.0) - offsetY;
+        var pointerInsideImage = anchorViewportX >= imageLeft - 0.5
+            && anchorViewportX <= imageLeft + ImageSurface.Width + 0.5
+            && anchorViewportY >= imageTop - 0.5
+            && anchorViewportY <= imageTop + ImageSurface.Height + 0.5;
+        if (pointerInsideImage)
+        {
+            return;
+        }
+
+        _zoomAnchorLocksImageCenter = true;
+        _zoomLockedAnchorViewportX = imageLeft + (ImageSurface.Width / 2.0);
+        _zoomLockedAnchorViewportY = imageTop + (ImageSurface.Height / 2.0);
+    }
+
     private void StopZoomAnimation()
     {
         DetachZoomRendering();
         _hasZoomAnimationAnchor = false;
+        _zoomAnchorSkipsCenterBlend = false;
+        _zoomAnchorLocksImageCenter = false;
         _zoomTargetFit = _zoomTargetFill = _zoomTargetActualSize = false;
         _isZoomCommitInProgress = false;
         _suppressSwapChainSizeChangedForZoom = false;
@@ -2617,13 +2684,25 @@ public sealed partial class HomePage : Page
         var anchorY = _zoomAnimationAnchorY;
         var anchorViewportX = _zoomAnimationViewportX;
         var anchorViewportY = _zoomAnimationViewportY;
-        NormalizeAnchorForTargetSize(
-            ref anchorX,
-            ref anchorY,
-            ref anchorViewportX,
-            ref anchorViewportY,
-            targetWidth,
-            targetHeight);
+        if (_zoomAnchorLocksImageCenter)
+        {
+            // A panned contained image with the pointer outside it grows in place
+            // around its own centre instead of snapping a clamped image edge here.
+            anchorX = 0.5;
+            anchorY = 0.5;
+            anchorViewportX = _zoomLockedAnchorViewportX;
+            anchorViewportY = _zoomLockedAnchorViewportY;
+        }
+        else if (!_zoomAnchorSkipsCenterBlend)
+        {
+            NormalizeAnchorForTargetSize(
+                ref anchorX,
+                ref anchorY,
+                ref anchorViewportX,
+                ref anchorViewportY,
+                targetWidth,
+                targetHeight);
+        }
 
         _isZoomCommitInProgress = true;
         _suppressSwapChainSizeChangedForZoom = true;
@@ -2674,6 +2753,11 @@ public sealed partial class HomePage : Page
             _isZoomCommitInProgress = true;
             try
             {
+                // The preview host is viewport-sized while a zoom animates; end it
+                // before the settled frame is drawn so a contained image gets its
+                // image-sized host back (otherwise the swap chain's black clear
+                // colour stays visible around the photo).
+                EndSwapChainZoomPreview();
                 await PresentViewportAsync(cancellationToken);
             }
             finally
