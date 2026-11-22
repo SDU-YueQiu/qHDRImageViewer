@@ -174,33 +174,18 @@ public sealed partial class HomePage
         var contentHeight = ImageViewport.Height > 0.0
             ? Math.Max(previewHeight, ImageViewport.Height * NativeZoomFactor)
             : Math.Max(previewHeight, imageHeight);
-        // Keep the swap chain at viewport size only while the image actually
-        // covers the preview (no letterbox, so the clear colour is never
-        // visible). A contained image gets its exact image-sized host even
-        // during a zoom animation: the surround then always comes from the XAML
-        // backdrop, so it cannot flash between the swap-chain clear colour and
-        // the window background.
-        var layout = ViewerViewportMath.CalculateSwapChainHostLayout(
-            previewWidth,
-            previewHeight,
-            imageWidth,
-            imageHeight,
-            contentWidth,
-            contentHeight,
-            _layoutScrollX ?? ImageScroller?.HorizontalOffset ?? 0.0,
-            _layoutScrollY ?? ImageScroller?.VerticalOffset ?? 0.0);
-        if ((_isZoomPreviewActive || _nativeManipulationActive)
-            && layout.CoversPreview(previewWidth, previewHeight))
-        {
-            var image = ViewerViewportMath.CalculateVisibleImageLayout(previewWidth, previewHeight,
-                imageWidth, imageHeight, contentWidth, contentHeight,
-                _layoutScrollX ?? ImageScroller?.HorizontalOffset ?? 0,
-                _layoutScrollY ?? ImageScroller?.VerticalOffset ?? 0);
-            return new ViewerSwapChainHostLayout(previewWidth, previewHeight,
-                image.ScaleX, image.ScaleY, image.OffsetX, image.OffsetY);
-        }
-
-        return layout;
+        // The swap chain always covers the preview and the shader maps the image
+        // into it with this layout. A single host size means a zoom or a pan
+        // never resizes the buffers, so the compositor never presents a blank or
+        // half-resized frame, and the surround is always the same GPU-cleared
+        // background instead of switching between the swap chain and the XAML
+        // backdrop halfway through a gesture.
+        var visible = ViewerViewportMath.CalculateVisibleImageLayout(previewWidth, previewHeight,
+            imageWidth, imageHeight, contentWidth, contentHeight,
+            _layoutScrollX ?? ImageScroller?.HorizontalOffset ?? 0,
+            _layoutScrollY ?? ImageScroller?.VerticalOffset ?? 0);
+        return new ViewerSwapChainHostLayout(previewWidth, previewHeight,
+            visible.ScaleX, visible.ScaleY, visible.OffsetX, visible.OffsetY);
     }
 
     private bool TryCreateRenderViewport(
@@ -304,10 +289,7 @@ public sealed partial class HomePage
             HdrSwapChainHost.Width = hostLayout.HostWidth;
             HdrSwapChainHost.Height = hostLayout.HostHeight;
             _swapChainHostContained = true;
-            // A contained host is resized every animation frame now, so the
-            // panel geometry has to follow immediately; otherwise the swap-chain
-            // buffer and the panel disagree for a frame (visible flash).
-            HdrSwapChainHost.UpdateLayout();
+            if (!_isZoomPreviewActive) HdrSwapChainHost.UpdateLayout();
         }
         finally
         {

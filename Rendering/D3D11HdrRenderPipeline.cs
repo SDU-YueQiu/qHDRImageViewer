@@ -1685,7 +1685,7 @@ public sealed partial class D3D11HdrRenderPipeline : IHdrRenderPipeline, IDispos
         _d2dContext.UnitMode = UnitMode.Pixels;
         _d2dContext.BeginDraw();
         _d2dContext.Transform = Matrix3x2.Identity;
-        _d2dContext.Clear(new Color4(0.0f, 0.0f, 0.0f, 1.0f));
+        _d2dContext.Clear(BackgroundClearColor);
         _d2dContext.Transform = CalculateD2DImageTransform();
         _d2dContext.DrawImage(_d2dBaseWhiteLevel, Vortice.Direct2D1.InterpolationMode.HighQualityCubic, CompositeMode.SourceOver);
         _d2dContext.Transform = Matrix3x2.Identity;
@@ -1703,7 +1703,7 @@ public sealed partial class D3D11HdrRenderPipeline : IHdrRenderPipeline, IDispos
         _d2dContext.UnitMode = UnitMode.Pixels;
         _d2dContext.BeginDraw();
         _d2dContext.Transform = Matrix3x2.Identity;
-        _d2dContext.Clear(new Color4(0.0f, 0.0f, 0.0f, 1.0f));
+        _d2dContext.Clear(BackgroundClearColor);
         _d2dContext.Transform = CalculateD2DImageTransform();
         _d2dContext.DrawImage(_d2dBaseColorManagement, Vortice.Direct2D1.InterpolationMode.HighQualityCubic, CompositeMode.SourceOver);
         _d2dContext.Transform = Matrix3x2.Identity;
@@ -2124,3 +2124,4 @@ public sealed partial class D3D11HdrRenderPipeline : IHdrRenderPipeline, IDispos
         float UnscaledHighPercentilePeak,
         float UnscaledAverage);
 }
+

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.7.0 - 2026-11-23
+
+- Fixed the jitter and the flash when zooming an image smaller than the window. The swap chain now always covers the preview (the shader maps the image into it), so a zoom or pan never resizes the buffers: no frame is presented half-resized, and the surround is always the same GPU-cleared background instead of switching between the swap-chain clear colour and the XAML backdrop halfway through the gesture. Previously a contained image switched to a viewport-sized host for the animation and back afterwards; trying to keep it image-sized instead resized the buffers and re-laid out the panel every frame, which is what produced the visible jitter.
+- The clear colour now also covers the Direct2D base-image path (both clears use the configured background), so SDR and HDR images show the same surround.
+- Verified with ~40 ms frame captures: a contained image grows 400x300 -> 440x330 with the surround pinned to one value in every frame (before the change: a blank first frame, then the clear colour, then the backdrop); the black preset is (0,0,0) in all frames; a panorama keeps its pan and the letterbox constant; "drag aside then wheel" still keeps h=0% v=0%.
+- Unit suite 639 passed / 1 skipped. Version 1.2.7.0.
+
 ## 1.2.6.0 - 2026-11-23
 
 - Fixed the grey/black surround that still appeared while zooming on an HDR-active display. The swap chain clear colour was linearised but not scaled to the display's SDR white level: the compositor maps scRGB 1.0 to 80 nits while the XAML backdrop is drawn at the user's SDR content brightness (200-300+ nits), so the clear looked 2-4x darker during the zoom animation and flipped back when it settled. The clear colour is now multiplied by `HdrDisplayConfiguration.SceneToSdrWhiteScale` (SDR white / 80 nits, 1.0 on SDR displays), i.e. the same factor the tone mapper uses for scene white. On the SDR test machine nothing changes; on an HDR display at 280 nit SDR white the previous (138, 138, 138) surround now lands on the same (243, 243, 243) as the window backdrop.
