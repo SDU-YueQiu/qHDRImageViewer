@@ -543,4 +543,70 @@ public sealed class ViewerViewportMathTests
         Assert.Equal(0, size.PixelWidth);
         Assert.Equal(0, size.PixelHeight);
     }
+
+    [Theory]
+    // 5568 px photo rendered from a 3072 px preview decode: the texture becomes
+    // the limiting factor from ~55 % zoom on.
+    [InlineData(46.0, false)]
+    [InlineData(55.0, false)]
+    [InlineData(56.5, true)]
+    [InlineData(100.0, true)]
+    [InlineData(374.3, true)]
+    public void ShouldUpgradeToFullResolution_UpgradesOnceZoomOutgrowsPreviewDecode(
+        double zoomPercentage, bool expected)
+    {
+        Assert.Equal(expected, ViewerViewportMath.ShouldUpgradeToFullResolution(
+            zoomPercentage,
+            decodedMaxDimension: 3072,
+            sourceMaxDimension: 5568,
+            maximumTextureDimension: 16384));
+    }
+
+    [Theory]
+    [InlineData(100, 5568, 5568)]
+    [InlineData(400, 5568, 5568)]
+    [InlineData(400, 16384, 20000)]
+    public void ShouldUpgradeToFullResolution_SkipsWhenTextureAlreadyHoldsSourcePixels(
+        double zoomPercentage, int decodedMaxDimension, int sourceMaxDimension)
+    {
+        Assert.False(ViewerViewportMath.ShouldUpgradeToFullResolution(
+            zoomPercentage, decodedMaxDimension, sourceMaxDimension, maximumTextureDimension: 16384));
+    }
+
+    [Theory]
+    [InlineData(0, 3072, 5568)]
+    [InlineData(double.NaN, 3072, 5568)]
+    [InlineData(double.PositiveInfinity, 3072, 5568)]
+    [InlineData(200, 0, 5568)]
+    [InlineData(200, -1, 5568)]
+    [InlineData(200, 3072, 0)]
+    public void ShouldUpgradeToFullResolution_RejectsInvalidInputs(
+        double zoomPercentage, int decodedMaxDimension, int sourceMaxDimension)
+    {
+        Assert.False(ViewerViewportMath.ShouldUpgradeToFullResolution(
+            zoomPercentage, decodedMaxDimension, sourceMaxDimension, maximumTextureDimension: 16384));
+    }
+
+    [Theory]
+    [InlineData(5568, 2225, 16384, 12388800L)]
+    [InlineData(400, 300, 16384, 120000L)]
+    [InlineData(20000, 8000, 16384, 107380736L)]
+    [InlineData(16384, 16384, 16384, 268435456L)]
+    public void EstimateDecodedPixelCount_AppliesTheTextureLimitToTheLongestSide(
+        int width, int height, int maximumDimension, long expected)
+    {
+        Assert.Equal(expected, ViewerViewportMath.EstimateDecodedPixelCount(width, height, maximumDimension));
+    }
+
+    [Theory]
+    [InlineData(0, 300, 16384)]
+    [InlineData(400, 0, 16384)]
+    [InlineData(-1, 300, 16384)]
+    [InlineData(400, 300, 0)]
+    [InlineData(400, 300, -1)]
+    public void EstimateDecodedPixelCount_ReturnsZeroForInvalidDimensions(
+        int width, int height, int maximumDimension)
+    {
+        Assert.Equal(0, ViewerViewportMath.EstimateDecodedPixelCount(width, height, maximumDimension));
+    }
 }

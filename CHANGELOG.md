@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.4.0 - 2026-11-22
+
+- Fixed blurry zooming after opening a large photo. The renderer decodes a viewport-sized preview first (about 1.5× the surface, capped at 3072 px), and only the zoom percentage control, slider and fit/actual-size toggle used to request the full-resolution decode. Wheel, button and pinch zooming therefore kept magnifying the preview texture, so a 5568 × 2225 photo looked blurry at 200–400 % until some zoom control happened to trigger the full decode. The viewer now upgrades the texture lazily whenever the committed zoom level outgrows the uploaded texture (`ViewerViewportMath.ShouldUpgradeToFullResolution`), and the upgrade preserves the zoom percentage, scroll position and framing exactly. Opening a photo still uses the fast preview decode; only zoom levels the user asks for pay for the full decode. Measured at the same 144 % zoom with a 5568 × 2225 JPEG: high-frequency detail (mean |Laplacian|) went from 0.24 to 2.44, i.e. the image now renders at full resolution.
+- Added `docs/RELEASE_1.2.4.md` documenting the root cause, the fix and the measurement; the unit suite is 621 passed / 1 skipped with 23 new tests for the upgrade decision and the automatic-upgrade size guard (images above 64 MP keep the previous behaviour and only decode full resolution when an explicit zoom control asks for it).
+
 ## 1.2.3.0 - 2026-11-22
 
 - Added a dedicated set of minification (zoom < 100 %) filters instead of reusing the magnification list: 自动（mip 三线性）、面积平均（Box，能量守恒、无振铃）、双线性、Catmull-Rom、Mitchell-Netravali（抗振铃）、Robidoux（缩图专用 Keys 三次）、Lanczos-2、Kaiser-2（窗函数 sinc，β=3.5）、最近邻。The pixel shader selects the downscale filter while the image is minified, samples the taps from a prefiltered mip level (footprint-aware LOD) and applies the existing 2×2 anti-ringing clamp to the negative-lobe kernels. Auto keeps the previous rendering byte-identically.

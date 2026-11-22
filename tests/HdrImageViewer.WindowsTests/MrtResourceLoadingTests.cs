@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Reflection;
 using HdrImageViewer.Services;
@@ -214,7 +214,9 @@ public sealed class MrtResourceLoadingTests
         Assert.Equal("AboutAppName/Text", aboutAppKey);
         var zhAbout = resourceMap.GetValue(aboutAppKey, zhContext);
         Assert.NotNull(zhAbout);
-        Assert.Equal("HDR 图片查看器", zhAbout.ValueAsString);
+        // The product was renamed from "HDR 图片查看器" to qHdrImageViewer, which
+        // is deliberately not translated.
+        Assert.Equal("qHdrImageViewer", zhAbout.ValueAsString);
     }
 
     [Fact]

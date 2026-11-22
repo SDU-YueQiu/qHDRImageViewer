@@ -238,6 +238,71 @@ internal static class ViewerViewportMath
         return IsPositiveFinite(percentage) ? percentage : 100.0;
     }
 
+    /// <summary>
+    /// Decides whether the zoom level on screen outgrows the texture that is
+    /// currently uploaded, i.e. whether a full-resolution decode could add
+    /// visible detail. The viewer decodes a viewport-sized preview first, so
+    /// zooming past that preview's native resolution keeps magnifying texels
+    /// until the full-resolution renditions replaces it.
+    /// </summary>
+    /// <param name="zoomPercentage">Zoom reported by the viewer (100 = 1:1).</param>
+    /// <param name="decodedMaxDimension">Largest side of the uploaded texture.</param>
+    /// <param name="sourceMaxDimension">Largest side of the source image.</param>
+    /// <param name="maximumTextureDimension">Largest texture the renderer accepts.</param>
+    /// <param name="marginFactor">
+    /// Small tolerance so layout noise cannot start a decode that adds nothing.
+    /// </param>
+    public static bool ShouldUpgradeToFullResolution(
+        double zoomPercentage,
+        int decodedMaxDimension,
+        int sourceMaxDimension,
+        int maximumTextureDimension,
+        double marginFactor = 1.01)
+    {
+        if (!IsPositiveFinite(zoomPercentage)
+            || decodedMaxDimension <= 0
+            || sourceMaxDimension <= 0
+            || maximumTextureDimension <= 0)
+        {
+            return false;
+        }
+
+        var targetMaxDimension = Math.Min(sourceMaxDimension, maximumTextureDimension);
+        if (decodedMaxDimension >= targetMaxDimension)
+        {
+            return false;
+        }
+
+        var margin = IsPositiveFinite(marginFactor) ? marginFactor : 1.0;
+        var textureLimitPercentage = 100.0 * decodedMaxDimension / sourceMaxDimension;
+        return zoomPercentage >= textureLimitPercentage * margin;
+    }
+
+    /// <summary>
+    /// Pixel count of the bitmap a full-resolution decode would produce, i.e.
+    /// the source size limited to <paramref name="maximumDimension"/> on its
+    /// longest side. Used to keep the lazy zoom upgrade from decoding images so
+    /// large that the texture would not fit in memory.
+    /// </summary>
+    public static long EstimateDecodedPixelCount(int width, int height, int maximumDimension)
+    {
+        if (width <= 0 || height <= 0 || maximumDimension <= 0)
+        {
+            return 0;
+        }
+
+        var longest = Math.Max(width, height);
+        if (longest <= maximumDimension)
+        {
+            return (long)width * height;
+        }
+
+        var scale = maximumDimension / (double)longest;
+        var scaledWidth = Math.Max(1, (int)Math.Round(width * scale));
+        var scaledHeight = Math.Max(1, (int)Math.Round(height * scale));
+        return (long)scaledWidth * scaledHeight;
+    }
+
     private static bool IsPositiveFinite(double value) => double.IsFinite(value) && value > 0.0;
 
     public static double CalculateNativeZoomCommitOffset(

@@ -569,6 +569,7 @@ public sealed partial class HomePage : Page
         _filmstripThumbnails.Dispose();
         CancelAndDispose(ref _zoomRenderCts);
         _actualSizeCts?.Cancel();
+        CancelZoomResolutionUpgrade();
         _viewerChromeHideTimer?.Stop();
         if (App.MainWindow is MainWindow mainWindow && _isImmersiveEventAttached)
         {
@@ -926,6 +927,7 @@ public sealed partial class HomePage : Page
         var cancellationToken = imageLoad.Token;
         _zoomRenderCts?.Cancel();
         _actualSizeCts?.Cancel();
+        CancelZoomResolutionUpgrade();
         _fullResolutionDocument = null;
         CancelAndDispose(ref _folderRefreshCts);
         StopCompanionMediaPlayback(resetSource: true);
@@ -2423,6 +2425,7 @@ public sealed partial class HomePage : Page
 
         UpdateZoomControls();
         ViewModel.UpdateRenderStatus(_renderer.LastRenderStatus);
+        MaybeUpgradeZoomResolution();
     }
 
     private void PreviewDeferredZoom()
@@ -2689,6 +2692,9 @@ public sealed partial class HomePage : Page
                 _committedZoomScale = _zoomScale;
                 UpdateZoomControls();
                 ViewModel.UpdateRenderStatus(_renderer.LastRenderStatus);
+                // Wheel/button zooming must not keep magnifying the preview
+                // decode: upgrade once the gesture has settled.
+                MaybeUpgradeZoomResolution();
             }
         }
         catch (OperationCanceledException)
@@ -2763,6 +2769,7 @@ public sealed partial class HomePage : Page
         UpdateImageSurfaceLayout();
         CenterScrollableImage();
         UpdateZoomControls();
+        MaybeUpgradeZoomResolution();
         _ = PresentViewportAsync(_lifetimeToken);
     }
 

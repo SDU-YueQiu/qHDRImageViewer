@@ -145,6 +145,9 @@ public sealed partial class HomePage
             ? ViewerViewportMath.CalculateFitSize(PreviewSurface.ActualWidth, PreviewSurface.ActualHeight, ImageSurface.Width / ImageSurface.Height).Width
             : 0;
         var percentage = ViewerViewportMath.CalculateZoomPercentage(ImageSurface.Width * NativeZoomFactor, fitWidth, actualSizeScale);
+        // The lazy full-resolution upgrade compares the percentage that is
+        // actually on screen against the uploaded texture's native resolution.
+        _presentedZoomPercentage = percentage;
         var maximumPercentage = MaximumZoomPercentage;
         ZoomOutButton.IsEnabled = hasImage && percentage > 1.01;
         ZoomInButton.IsEnabled = hasImage && percentage < maximumPercentage - 0.01;

@@ -79,6 +79,9 @@ public sealed partial class HomePage
         ApplyImageSurfaceSize(width, height);
         ImageScroller.ChangeView(x, y, 1.0f, disableAnimation: true);
         UpdateZoomControls();
+        // A pinch gesture ends here; upgrade the texture if the baked-in zoom
+        // now outgrows the preview decode.
+        MaybeUpgradeZoomResolution();
     }
 
     private static double CalculateNativeZoomCommitOffset(
