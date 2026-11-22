@@ -161,6 +161,8 @@
              Link="ZoomInterpolationMode.cs" />
     <Compile Include="..\..\Rendering\ZoomDownscaleMode.cs"
              Link="ZoomDownscaleMode.cs" />
+    <Compile Include="..\..\Rendering\ViewerBackgroundMode.cs"
+             Link="ViewerBackgroundMode.cs" />
     <Compile Include="..\..\Rendering\HdrHeadroomMode.cs"
              Link="HdrHeadroomMode.cs" />
     <Compile Include="..\..\Rendering\HdrColorMath.cs"

@@ -2010,4 +2010,28 @@
   <data name="ContextMenuRtxVsrDisable" xml:space="preserve">
     <value>Disable RTX VSR</value>
   </data>
+  <data name="SettingsViewerBackgroundLabel" xml:space="preserve">
+    <value>ビューアーの背景</value>
+  </data>
+  <data name="SettingsViewerBackgroundDescription" xml:space="preserve">
+    <value>画像の周囲の色です。ズーム中も同じ色を使い、背景のちらつきを防ぎます。</value>
+  </data>
+  <data name="SettingsBackgroundWindow" xml:space="preserve">
+    <value>ウィンドウの色</value>
+  </data>
+  <data name="SettingsBackgroundBlack" xml:space="preserve">
+    <value>黒</value>
+  </data>
+  <data name="SettingsBackgroundDarkGray" xml:space="preserve">
+    <value>濃いグレー</value>
+  </data>
+  <data name="SettingsBackgroundMidGray" xml:space="preserve">
+    <value>中間グレー</value>
+  </data>
+  <data name="SettingsBackgroundLightGray" xml:space="preserve">
+    <value>薄いグレー</value>
+  </data>
+  <data name="SettingsBackgroundWhite" xml:space="preserve">
+    <value>白</value>
+  </data>
 </root>

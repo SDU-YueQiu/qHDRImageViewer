@@ -2010,4 +2010,28 @@ Scuri filtrati {3} · Senza coordinate valide {4}</value>
   <data name="ContextMenuRtxVsrDisable" xml:space="preserve">
     <value>Disable RTX VSR</value>
   </data>
+  <data name="SettingsViewerBackgroundLabel" xml:space="preserve">
+    <value>Sfondo del visualizzatore</value>
+  </data>
+  <data name="SettingsViewerBackgroundDescription" xml:space="preserve">
+    <value>Colore dell'area attorno all'immagine. Usato anche durante lo zoom per evitare sfarfallii.</value>
+  </data>
+  <data name="SettingsBackgroundWindow" xml:space="preserve">
+    <value>Colore della finestra</value>
+  </data>
+  <data name="SettingsBackgroundBlack" xml:space="preserve">
+    <value>Nero</value>
+  </data>
+  <data name="SettingsBackgroundDarkGray" xml:space="preserve">
+    <value>Grigio scuro</value>
+  </data>
+  <data name="SettingsBackgroundMidGray" xml:space="preserve">
+    <value>Grigio medio</value>
+  </data>
+  <data name="SettingsBackgroundLightGray" xml:space="preserve">
+    <value>Grigio chiaro</value>
+  </data>
+  <data name="SettingsBackgroundWhite" xml:space="preserve">
+    <value>Bianco</value>
+  </data>
 </root>

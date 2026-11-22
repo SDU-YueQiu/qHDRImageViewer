@@ -80,6 +80,13 @@ public sealed class AppUserSettings
 
     public AppTheme Theme { get; set; } = AppTheme.System;
 
+    /// <summary>
+    /// Colour of the viewer backdrop. The swap chain clears to this colour too,
+    /// so the letterbox around a contained image does not flash black while a
+    /// zoom animation runs.
+    /// </summary>
+    public ViewerBackgroundMode ViewerBackground { get; set; } = ViewerBackgroundMode.Window;
+
     public bool TouchpadGesturesEnabled { get; set; } = true;
 
     public bool PreloadAdjacentImages { get; set; } = true;
@@ -349,6 +356,11 @@ public static class AppSettingsService
     public static void SetTheme(AppTheme theme)
     {
         UpdateSettings(settings => settings.Theme = Enum.IsDefined(theme) ? theme : AppTheme.System);
+    }
+
+    public static void SetViewerBackground(ViewerBackgroundMode mode)
+    {
+        UpdateSettings(settings => settings.ViewerBackground = ViewerBackgroundPalette.Normalize(mode));
     }
 
     public static void SetTouchpadGesturesEnabled(bool enabled)
@@ -805,6 +817,8 @@ public static class AppSettingsService
             settings.MouseWheelBehavior = MouseWheelBehavior.NavigateImages;
         }
 
+        settings.ViewerBackground = ViewerBackgroundPalette.Normalize(settings.ViewerBackground);
+
         settings.AdjacentPreloadRadius = AppUserSettings.NormalizeAdjacentPreloadRadius(settings.AdjacentPreloadRadius);
         settings.HdrViewMode = AppUserSettings.NormalizeHdrViewMode(settings.HdrViewMode);
         settings.Language ??= string.Empty;
@@ -900,6 +914,7 @@ public static class AppSettingsService
         {
             MouseWheelBehavior = settings.MouseWheelBehavior,
             Theme = settings.Theme,
+            ViewerBackground = settings.ViewerBackground,
             TouchpadGesturesEnabled = settings.TouchpadGesturesEnabled,
             PreloadAdjacentImages = settings.PreloadAdjacentImages,
             AdjacentPreloadRadius = settings.AdjacentPreloadRadius,

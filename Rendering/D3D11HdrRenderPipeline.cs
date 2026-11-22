@@ -126,6 +126,11 @@ public sealed partial class D3D11HdrRenderPipeline : IHdrRenderPipeline, IDispos
     private ColorGamutMappingMode _colorGamutMappingMode = ColorGamutMappingMode.Managed;
     private ZoomInterpolationMode _zoomInterpolationUpscale = ZoomInterpolationMode.Auto;
     private ZoomDownscaleMode _zoomDownscale = ZoomDownscaleMode.Auto;
+
+    // Linear scRGB clear colour for the swap chain. It matches the viewer
+    // backdrop so the letterbox stays the same colour while a zoom animation
+    // draws into the viewport-sized swap chain.
+    private Vector4 _backgroundColorScRgb = Vector4.Zero;
     private GainmapViewMode _viewMode = GainmapViewMode.Adaptive;
     private HdrHeadroomMode _headroomMode = HdrHeadroomMode.SystemAdaptive;
     private bool _toneMappingEnabledForCurrentFrame;
@@ -226,8 +231,32 @@ public sealed partial class D3D11HdrRenderPipeline : IHdrRenderPipeline, IDispos
         _zoomInterpolationUpscale,
         _zoomDownscale);
 
-    public bool ApplySettings(HdrRendererSettings settings)
+    /// <summary>
+    /// Sets the linear scRGB colour the swap chain clears to; it mirrors the
+    /// viewer backdrop so a contained image keeps the same surround while the
+    /// zoom animation renders into the viewport-sized swap chain. Returns true
+    /// when the value changed.
+    /// </summary>
+    public bool SetBackgroundColor(Vector4 scRgb)
     {
+        var sanitized = new Vector4(
+            float.IsFinite(scRgb.X) ? Math.Max(0.0f, scRgb.X) : 0.0f,
+            float.IsFinite(scRgb.Y) ? Math.Max(0.0f, scRgb.Y) : 0.0f,
+            float.IsFinite(scRgb.Z) ? Math.Max(0.0f, scRgb.Z) : 0.0f,
+            1.0f);
+        if ((sanitized - _backgroundColorScRgb).LengthSquared() <= 1e-8f)
+        {
+            return false;
+        }
+
+        _backgroundColorScRgb = sanitized;
+        return true;
+    }
+
+    private Color4 BackgroundClearColor =>
+        new(_backgroundColorScRgb.X, _backgroundColorScRgb.Y, _backgroundColorScRgb.Z, 1.0f);
+
+    public bool ApplySettings(HdrRendererSettings settings)    {
         ArgumentNullException.ThrowIfNull(settings);
 
         var viewMode = Enum.IsDefined(settings.ViewMode)
@@ -384,7 +413,7 @@ public sealed partial class D3D11HdrRenderPipeline : IHdrRenderPipeline, IDispos
                 EnsureRenderTargetView();
                 if (_context is not null && _swapChain is not null && _renderTargetView is not null)
                 {
-                    _context.ClearRenderTargetView(_renderTargetView, new Color4(0.0f, 0.0f, 0.0f, 1.0f));
+                    _context.ClearRenderTargetView(_renderTargetView, BackgroundClearColor);
                     _swapChain.Present(1, PresentFlags.None).CheckError();
                 }
             }
@@ -394,7 +423,7 @@ public sealed partial class D3D11HdrRenderPipeline : IHdrRenderPipeline, IDispos
                 EnsureRenderTargetView();
                 if (_context is not null && _swapChain is not null && _renderTargetView is not null)
                 {
-                    _context.ClearRenderTargetView(_renderTargetView, new Color4(0.0f, 0.0f, 0.0f, 1.0f));
+                    _context.ClearRenderTargetView(_renderTargetView, BackgroundClearColor);
                     _swapChain.Present(1, PresentFlags.None).CheckError();
                 }
             }
@@ -1403,7 +1432,7 @@ public sealed partial class D3D11HdrRenderPipeline : IHdrRenderPipeline, IDispos
         _context.OMSetDepthStencilState(null, 0);
         _context.RSSetState(null);
         _context.OMSetRenderTargets(_renderTargetView, null);
-        _context.ClearRenderTargetView(_renderTargetView, new Color4(0.0f, 0.0f, 0.0f, 1.0f));
+        _context.ClearRenderTargetView(_renderTargetView, BackgroundClearColor);
         _context.RSSetViewport(0.0f, 0.0f, _pixelWidth, _pixelHeight, 0.0f, 1.0f);
         _context.IASetInputLayout(null);
         _context.IASetPrimitiveTopology(PrimitiveTopology.TriangleList);
@@ -1907,7 +1936,7 @@ public sealed partial class D3D11HdrRenderPipeline : IHdrRenderPipeline, IDispos
         _context.OMSetDepthStencilState(null, 0);
         _context.RSSetState(null);
         _context.OMSetRenderTargets(_renderTargetView, null);
-        _context.ClearRenderTargetView(_renderTargetView, new Color4(0.0f, 0.0f, 0.0f, 1.0f));
+        _context.ClearRenderTargetView(_renderTargetView, BackgroundClearColor);
         _context.RSSetViewport(0.0f, 0.0f, _pixelWidth, _pixelHeight, 0.0f, 1.0f);
         _context.IASetInputLayout(null);
         _context.IASetPrimitiveTopology(PrimitiveTopology.TriangleList);

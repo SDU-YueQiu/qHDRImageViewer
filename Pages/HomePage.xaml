@@ -194,6 +194,10 @@
                 PointerPressed="PreviewSurface_PointerPressed"
                 PointerReleased="PreviewSurface_PointerReleased"
                 SizeChanged="PreviewSurface_SizeChanged">
+                <Border
+                    x:Name="ViewerBackdrop"
+                    Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+                    IsHitTestVisible="False" />
                 <SwapChainPanel
                     x:Name="HdrSwapChainHost"
                     HorizontalAlignment="Stretch"

@@ -2010,4 +2010,28 @@
   <data name="ContextMenuRtxVsrDisable" xml:space="preserve">
     <value>关闭 RTX VSR 超分</value>
   </data>
+  <data name="SettingsViewerBackgroundLabel" xml:space="preserve">
+    <value>查看器背景</value>
+  </data>
+  <data name="SettingsViewerBackgroundDescription" xml:space="preserve">
+    <value>图片周围区域的颜色。缩放动画期间也使用该颜色，避免背景闪烁。</value>
+  </data>
+  <data name="SettingsBackgroundWindow" xml:space="preserve">
+    <value>窗口颜色</value>
+  </data>
+  <data name="SettingsBackgroundBlack" xml:space="preserve">
+    <value>黑色</value>
+  </data>
+  <data name="SettingsBackgroundDarkGray" xml:space="preserve">
+    <value>深灰</value>
+  </data>
+  <data name="SettingsBackgroundMidGray" xml:space="preserve">
+    <value>中灰</value>
+  </data>
+  <data name="SettingsBackgroundLightGray" xml:space="preserve">
+    <value>浅灰</value>
+  </data>
+  <data name="SettingsBackgroundWhite" xml:space="preserve">
+    <value>白色</value>
+  </data>
 </root>

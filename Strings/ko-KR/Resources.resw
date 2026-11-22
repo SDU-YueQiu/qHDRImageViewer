@@ -2010,4 +2010,28 @@
   <data name="ContextMenuRtxVsrDisable" xml:space="preserve">
     <value>Disable RTX VSR</value>
   </data>
+  <data name="SettingsViewerBackgroundLabel" xml:space="preserve">
+    <value>뷰어 배경</value>
+  </data>
+  <data name="SettingsViewerBackgroundDescription" xml:space="preserve">
+    <value>이미지 주변 영역의 색입니다. 확대하는 동안에도 사용되어 배경이 깜빡이지 않습니다.</value>
+  </data>
+  <data name="SettingsBackgroundWindow" xml:space="preserve">
+    <value>창 색</value>
+  </data>
+  <data name="SettingsBackgroundBlack" xml:space="preserve">
+    <value>검정</value>
+  </data>
+  <data name="SettingsBackgroundDarkGray" xml:space="preserve">
+    <value>진회색</value>
+  </data>
+  <data name="SettingsBackgroundMidGray" xml:space="preserve">
+    <value>중간 회색</value>
+  </data>
+  <data name="SettingsBackgroundLightGray" xml:space="preserve">
+    <value>연회색</value>
+  </data>
+  <data name="SettingsBackgroundWhite" xml:space="preserve">
+    <value>흰색</value>
+  </data>
 </root>

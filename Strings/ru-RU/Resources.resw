@@ -2010,4 +2010,28 @@
   <data name="ContextMenuRtxVsrDisable" xml:space="preserve">
     <value>Disable RTX VSR</value>
   </data>
+  <data name="SettingsViewerBackgroundLabel" xml:space="preserve">
+    <value>Фон просмотрщика</value>
+  </data>
+  <data name="SettingsViewerBackgroundDescription" xml:space="preserve">
+    <value>Цвет области вокруг изображения. Используется и при масштабировании, чтобы фон не мигал.</value>
+  </data>
+  <data name="SettingsBackgroundWindow" xml:space="preserve">
+    <value>Цвет окна</value>
+  </data>
+  <data name="SettingsBackgroundBlack" xml:space="preserve">
+    <value>Чёрный</value>
+  </data>
+  <data name="SettingsBackgroundDarkGray" xml:space="preserve">
+    <value>Тёмно-серый</value>
+  </data>
+  <data name="SettingsBackgroundMidGray" xml:space="preserve">
+    <value>Средне-серый</value>
+  </data>
+  <data name="SettingsBackgroundLightGray" xml:space="preserve">
+    <value>Светло-серый</value>
+  </data>
+  <data name="SettingsBackgroundWhite" xml:space="preserve">
+    <value>Белый</value>
+  </data>
 </root>

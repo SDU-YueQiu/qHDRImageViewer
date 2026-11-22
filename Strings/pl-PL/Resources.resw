@@ -2010,4 +2010,28 @@ Ciemne odfiltrowane {3} · Bez prawidłowych współrzędnych {4}</value>
   <data name="ContextMenuRtxVsrDisable" xml:space="preserve">
     <value>Disable RTX VSR</value>
   </data>
+  <data name="SettingsViewerBackgroundLabel" xml:space="preserve">
+    <value>Tło przeglądarki</value>
+  </data>
+  <data name="SettingsViewerBackgroundDescription" xml:space="preserve">
+    <value>Kolor obszaru wokół obrazu. Używany także podczas powiększania, aby tło nie migało.</value>
+  </data>
+  <data name="SettingsBackgroundWindow" xml:space="preserve">
+    <value>Kolor okna</value>
+  </data>
+  <data name="SettingsBackgroundBlack" xml:space="preserve">
+    <value>Czarny</value>
+  </data>
+  <data name="SettingsBackgroundDarkGray" xml:space="preserve">
+    <value>Ciemnoszary</value>
+  </data>
+  <data name="SettingsBackgroundMidGray" xml:space="preserve">
+    <value>Średnioszary</value>
+  </data>
+  <data name="SettingsBackgroundLightGray" xml:space="preserve">
+    <value>Jasnoszary</value>
+  </data>
+  <data name="SettingsBackgroundWhite" xml:space="preserve">
+    <value>Biały</value>
+  </data>
 </root>

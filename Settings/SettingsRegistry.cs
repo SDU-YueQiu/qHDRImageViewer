@@ -625,6 +625,22 @@ public static class SettingsRegistry
                     (int)AppTheme.System,
                     static settings => (int)settings.Theme,
                     static value => AppSettingsService.SetTheme((AppTheme)value)),
+                SettingDefinitionFactory.Choice(
+                    "ViewerBackground", pageId, "theme",
+                    "SettingsViewerBackgroundLabel",
+                    "SettingsViewerBackgroundDescription",
+                    "\uE790",
+                    [
+                        SettingDefinitionFactory.ChoiceItem("SettingsBackgroundWindow", (int)ViewerBackgroundMode.Window),
+                        SettingDefinitionFactory.ChoiceItem("SettingsBackgroundBlack", (int)ViewerBackgroundMode.Black),
+                        SettingDefinitionFactory.ChoiceItem("SettingsBackgroundDarkGray", (int)ViewerBackgroundMode.DarkGray),
+                        SettingDefinitionFactory.ChoiceItem("SettingsBackgroundMidGray", (int)ViewerBackgroundMode.MidGray),
+                        SettingDefinitionFactory.ChoiceItem("SettingsBackgroundLightGray", (int)ViewerBackgroundMode.LightGray),
+                        SettingDefinitionFactory.ChoiceItem("SettingsBackgroundWhite", (int)ViewerBackgroundMode.White),
+                    ],
+                    (int)ViewerBackgroundMode.Window,
+                    static settings => (int)settings.ViewerBackground,
+                    static value => AppSettingsService.SetViewerBackground((ViewerBackgroundMode)value)),
                 SettingDefinitionFactory.StringChoice(
                     "Language", pageId, "theme",
                     "SettingsLanguageLabel",

@@ -123,6 +123,8 @@ public sealed partial class HomePage : Page
     private bool _zoomAnchorLocksImageCenter;
     private double _zoomLockedAnchorViewportX = 0.5;
     private double _zoomLockedAnchorViewportY = 0.5;
+    private Brush? _windowViewerBackgroundBrush;
+    private ViewerBackgroundMode? _appliedViewerBackground;
     private readonly ImagePreloadController _imagePreloads;
     private readonly FilmstripThumbnailController _filmstripThumbnails;
     private readonly ImageLoadController _imageLoads;
@@ -507,6 +509,7 @@ public sealed partial class HomePage : Page
             InitializeDisplayInformation();
             AttachSettingsChanged();
             _settings = AppSettingsService.Current;
+            ActualThemeChanged += HomePage_ActualThemeChanged;
             RefreshRendererDisplayConfiguration();
             if (App.MainWindow is MainWindow mainWindow)
             {
@@ -554,6 +557,7 @@ public sealed partial class HomePage : Page
         _viewerChromeStoryboard?.Stop();
         _analysisAutoRefreshTimer?.Stop();
         DetachSettingsChanged();
+        ActualThemeChanged -= HomePage_ActualThemeChanged;
         DetachZoomRendering();
         DetachFilmstripScrollViewer();
         _viewportPresentTimer?.Stop();
@@ -2988,6 +2992,60 @@ public sealed partial class HomePage : Page
         }
     }
 
+    /// <summary>
+    /// Applies the configured viewer backdrop to the XAML layer behind the image
+    /// and to the swap-chain clear colour. Keeping the two in sync is what stops
+    /// the black surround (swap-chain clear) from flashing while a zoom
+    /// animation renders into the viewport-sized swap chain.
+    /// </summary>
+    private void ApplyViewerBackground(bool redraw = true)
+    {
+        if (ViewerBackdrop is null)
+        {
+            return;
+        }
+
+        _windowViewerBackgroundBrush ??= ViewerBackdrop.Background;
+        var mode = ViewerBackgroundPalette.Normalize(_settings.ViewerBackground);
+        if (_appliedViewerBackground == mode)
+        {
+            return;
+        }
+
+        _appliedViewerBackground = mode;
+        Windows.UI.Color color;
+        if (ViewerBackgroundPalette.TryGetSrgb(mode, out var red, out var green, out var blue))
+        {
+            color = Windows.UI.Color.FromArgb(255, red, green, blue);
+            ViewerBackdrop.Background = new SolidColorBrush(color);
+        }
+        else
+        {
+            ViewerBackdrop.Background = _windowViewerBackgroundBrush;
+            color = _windowViewerBackgroundBrush is SolidColorBrush windowBrush
+                ? windowBrush.Color
+                : Windows.UI.Color.FromArgb(0, 0, 0, 0);
+        }
+
+        var changed = _renderer.SetBackgroundColor(
+            ViewerBackgroundPalette.ToScRgb(color.R, color.G, color.B));
+        if (changed && redraw && IsLoaded && ViewModel.HasImage)
+        {
+            _ = PresentViewportAsync(_lifetimeToken);
+        }
+    }
+
+    private void HomePage_ActualThemeChanged(FrameworkElement sender, object args)
+    {
+        // The window-following mode resolves its colour from the theme brush, so
+        // force a re-apply when the app switches between light and dark.
+        if (ViewerBackgroundPalette.Normalize(_settings.ViewerBackground) == ViewerBackgroundMode.Window)
+        {
+            _appliedViewerBackground = null;
+            ApplyViewerBackground();
+        }
+    }
+
     private void ApplyViewerSettings()
     {
         ZoomSlider.Minimum = 1;
@@ -3010,6 +3068,8 @@ public sealed partial class HomePage : Page
         });
 
         ApplyInspectorLayout();
+
+        ApplyViewerBackground();
 
         UpdateFolderNavigationOverlay();
 
