@@ -1,9 +1,9 @@
 {
   "profiles": {
-    "HdrImageViewer (Package)": {
+    "qHdrImageViewer (Package)": {
       "commandName": "MsixPackage"
     },
-    "HdrImageViewer (Unpackaged)": {
+    "qHdrImageViewer (Unpackaged)": {
       "commandName": "Project"
     }
   }

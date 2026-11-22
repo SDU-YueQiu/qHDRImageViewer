@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8" ?>
 <Page
     x:Class="HdrImageViewer.Pages.HomePage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -144,6 +144,30 @@
             <AppBarButton x:Name="TopViewerToolsButton" AutomationProperties.AutomationId="ViewerToolsButton" Click="ViewerTools_Click">
                 <AppBarButton.Icon><FontIcon Glyph="&#xE9D9;" /></AppBarButton.Icon>
             </AppBarButton>
+            <AppBarElementContainer
+                x:Name="RtxVsrBadgeHost"
+                VerticalAlignment="Center"
+                Visibility="Collapsed">
+                <!-- Read-only accent badge shown only while RTX VSR is active. It
+                     sits in the primary command area, at the same level as the
+                     other viewer tools; the feature itself is toggled from the
+                     image right-click menu. -->
+                <Border
+                    x:Name="RtxVsrBadge"
+                    Margin="4,0,4,0"
+                    Padding="9,3"
+                    VerticalAlignment="Center"
+                    AutomationProperties.AutomationId="RtxVsrBadge"
+                    Background="{ThemeResource AccentFillColorDefaultBrush}"
+                    CornerRadius="10"
+                    IsHitTestVisible="False">
+                    <TextBlock
+                        x:Name="RtxVsrBadgeTextBlock"
+                        IsTabStop="False"
+                        Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
+                        Style="{StaticResource CaptionTextBlockStyle}" />
+                </Border>
+            </AppBarElementContainer>
             <CommandBar.SecondaryCommands>
                 <AppBarButton x:Name="TopBatchExportButton" AutomationProperties.AutomationId="BatchExportButton" Icon="Folder" Click="BatchExport_Click" />
                 <AppBarButton x:Name="ReloadImageButton" AutomationProperties.AutomationId="ReloadImageButton" Icon="Refresh" Click="ReloadImage_Click" IsEnabled="{x:Bind ViewModel.HasImage, Mode=OneWay}" />
@@ -210,7 +234,17 @@
                             VerticalAlignment="Center"
                             Visibility="Collapsed">
                             <Grid.ContextFlyout>
-                                <MenuFlyout>
+                                <MenuFlyout Opening="ImageContextMenu_Opening">
+                                    <MenuFlyoutItem
+                                        x:Name="RtxVsrToggleMenuItem"
+                                        AutomationProperties.AutomationId="RtxVsrToggleMenuItem"
+                                        Click="RtxVsrToggleMenuItem_Click"
+                                        x:Uid="ContextMenuRtxVsr">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Glyph="&#xE945;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutSeparator />
                                     <MenuFlyoutItem
                                         x:Name="SaveAsMenuItem"
                                         AutomationProperties.AutomationId="SaveAsMenuItem"
@@ -693,6 +727,7 @@
                                 HorizontalAlignment="Stretch"
                                 AutomationProperties.AutomationId="ImageFilmstrip"
                                 ContainerContentChanging="ImageFilmstrip_ContainerContentChanging"
+                                IsTabStop="False"
                                 Loaded="ImageFilmstrip_Loaded"
                                 PointerWheelChanged="ImageFilmstrip_PointerWheelChanged"
                                 Background="Transparent"
@@ -1364,6 +1399,22 @@
             </Border>
         </Grid>
 
+        <!-- RTX VSR feedback toast: tells the user that processing started /
+             finished and how to compare the enhanced result. It deliberately
+             floats above the image so the AI result is never silently applied. -->
+        <Grid Grid.Row="1"
+              Margin="16,0,16,88"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Bottom"
+              MaxWidth="640">
+            <InfoBar
+                x:Name="RtxVsrInfoBar"
+                AutomationProperties.AutomationId="RtxVsrInfoBar"
+                IsOpen="False"
+                IsClosable="True"
+                IsIconVisible="True" />
+        </Grid>
+
         <Border x:Name="PhotoToolbarOverlay" Grid.Row="2" Padding="12,4" MinHeight="44"
                 Background="{ThemeResource LayerFillColorDefaultBrush}"
                 BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0"
@@ -1382,7 +1433,7 @@
                 <TextBlock x:Name="ImageStatusText" Grid.Column="1" Margin="4,0" VerticalAlignment="Center"
                            Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" />
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
-                    <Button x:Name="ZoomFitButton" AutomationProperties.AutomationId="ZoomFitButton" Click="ZoomFit_Click" Style="{StaticResource PhotoToolbarButtonStyle}"><FontIcon FontSize="16" Glyph="&#xE9A6;" /></Button>
+                    <Button x:Name="ZoomFitButton" AutomationProperties.AutomationId="ZoomFitButton" Click="ZoomModeToggle_Click" Style="{StaticResource PhotoToolbarButtonStyle}"><FontIcon x:Name="ZoomModeToggleIcon" FontSize="16" Glyph="&#xE9A6;" /></Button>
                     <DropDownButton x:Name="ZoomMenuButton" AutomationProperties.AutomationId="ZoomMenuButton" MinWidth="104" Height="32" VerticalAlignment="Center">
                         <TextBlock x:Name="ZoomLevelText" Text="100%" Style="{StaticResource CaptionTextBlockStyle}" />
                         <DropDownButton.Flyout>

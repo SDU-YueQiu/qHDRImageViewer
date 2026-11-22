@@ -17,17 +17,28 @@ internal sealed partial class DirectoryMetadataJsonContext : JsonSerializerConte
 
 public static class DirectoryMetadataCache
 {
-    internal const int CurrentVersion = 23;
+    // 24: HDR JPEG XL probing changed (PQ/HLG detection through attached ICC
+    // profiles, native float16 decode, jhgm brob boxes). Version 23 entries can
+    // carry the old "linear sRGB" probe for the same file and would select the
+    // wrong HDR decode path, so they must not be reused.
+    internal const int CurrentVersion = 24;
+    public const int DefaultMaxDiskCacheFiles = 200;
     private const int MaxResidentDirectoryFiles = 8;
     private const int MaxDirectoryStates = 32;
     private const int MaxUnprunedEntryCount = 256;
     private const int MaxPruneChecksPerFlush = 256;
-    private const int MaxDiskCacheFiles = 200;
     private const int DiskCleanupFlushInterval = 64;
     private const string LegacyCacheFileName = ".hdrimageviewer.meta.json";
     private static readonly TimeSpan FlushDelay = TimeSpan.FromSeconds(4);
     private static readonly TimeSpan MaximumDirtyAge = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan StaleEntryVerificationAge = TimeSpan.FromDays(7);
+
+    /// <summary>
+    /// Gets or sets the maximum number of per-directory cache files kept on disk.
+    /// The default preserves the historical 200-file cleanup threshold; the
+    /// settings page drives this at startup and on change.
+    /// </summary>
+    public static int MaxDiskCacheFiles { get; set; } = DefaultMaxDiskCacheFiles;
 
     // Cache files live under LocalAppData instead of the browsed folder: the
     // in-folder file polluted user photo directories and silently never
@@ -35,7 +46,7 @@ public static class DirectoryMetadataCache
     // full probe cost on every app run.
     private static readonly string s_cacheRoot = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "HdrImageViewer",
+        "qHdrImageViewer",
         "metadata-cache");
 
     private static readonly ConcurrentDictionary<string, DirectoryState> s_directories = new(StringComparer.OrdinalIgnoreCase);
@@ -497,6 +508,16 @@ public static class DirectoryMetadataCache
         _ = Task.Run(TrimDiskCacheFiles);
     }
 
+    /// <summary>
+    /// Requests an immediate disk-cache trim, used when the user lowers the
+    /// metadata cache file budget instead of waiting for the next periodic flush.
+    /// </summary>
+    public static void RequestDiskCacheTrim()
+    {
+        Interlocked.Exchange(ref s_flushesSinceDiskCleanup, DiskCleanupFlushInterval);
+        TriggerDiskCacheCleanupIfNeeded();
+    }
+
     private static void TrimDiskCacheFiles()
     {
         try
@@ -507,8 +528,9 @@ public static class DirectoryMetadataCache
                 return;
             }
 
+            var maximumFiles = Math.Max(1, MaxDiskCacheFiles);
             var files = new DirectoryInfo(cacheRoot).GetFiles("*.json");
-            if (files.Length <= MaxDiskCacheFiles)
+            if (files.Length <= maximumFiles)
             {
                 return;
             }
@@ -517,7 +539,7 @@ public static class DirectoryMetadataCache
                 files,
                 static (left, right) => GetMostRecentActivityUtc(left).CompareTo(GetMostRecentActivityUtc(right)));
 
-            var removeCount = files.Length - MaxDiskCacheFiles;
+            var removeCount = files.Length - maximumFiles;
             for (var i = 0; i < removeCount; i++)
             {
                 TryDeleteFile(files[i].FullName);

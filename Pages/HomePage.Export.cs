@@ -1,4 +1,4 @@
-﻿using HdrImageViewer.Rendering;
+using HdrImageViewer.Rendering;
 using HdrImageViewer.Models;
 using HdrImageViewer.Presentation;
 using HdrImageViewer.Services;
@@ -177,6 +177,7 @@ public sealed partial class HomePage
             SuggestedStartLocation = PickerLocationId.PicturesLibrary,
             SuggestedFileName = CreateCropSuggestedFileName(_currentDocument, CropExportMode.SdrPreview),
             DefaultFileExtension = ".png",
+            ShowOverwritePrompt = _settings.ConfirmBeforeOverwrite,
         };
         picker.FileTypeChoices.Add(Localization.GetString("CropFormatPngSdr"), [".png"]);
         picker.FileTypeChoices.Add(Localization.GetString("CropFormatTiffSdr"), [".tif"]);
@@ -280,6 +281,7 @@ public sealed partial class HomePage
         {
             SuggestedStartLocation = PickerLocationId.PicturesLibrary,
             SuggestedFileName = CreateCropSuggestedFileName(_currentDocument, CropExportMode.GainMapPreserve),
+            ShowOverwritePrompt = _settings.ConfirmBeforeOverwrite,
         };
         AddAvailableExportChoices(picker, HdrExportMode.GainMap, jpegOnly: true);
 
@@ -352,6 +354,7 @@ public sealed partial class HomePage
         {
             SuggestedStartLocation = PickerLocationId.PicturesLibrary,
             SuggestedFileName = CreateCropSuggestedFileName(_currentDocument, CropExportMode.UltraHdrConvert),
+            ShowOverwritePrompt = _settings.ConfirmBeforeOverwrite,
         };
         AddAvailableExportChoices(picker, HdrExportMode.GainMap);
 
@@ -420,6 +423,7 @@ public sealed partial class HomePage
             SuggestedFileName = _isCropModeEnabled
                 ? CreateCropSuggestedFileName(_currentDocument, CropExportMode.SingleLayerHdr)
                 : CreateSaveAsSuggestedFileName(_currentDocument, "single-layer-hdr"),
+            ShowOverwritePrompt = _settings.ConfirmBeforeOverwrite,
         };
         AddAvailableExportChoices(picker, HdrExportMode.SingleLayer);
 
@@ -712,6 +716,7 @@ public sealed partial class HomePage
         {
             SuggestedStartLocation = PickerLocationId.PicturesLibrary,
             SuggestedFileName = CreateSaveAsSuggestedFileName(document, GetSaveAsSuffix(mode)),
+            ShowOverwritePrompt = _settings.ConfirmBeforeOverwrite,
         };
         AddAvailableExportChoices(picker, exportMode, jpegOnly: mode == SaveAsExportMode.GainMapPreserve);
 

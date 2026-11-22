@@ -1,8 +1,10 @@
-﻿using Microsoft.UI;
+using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using HdrImageViewer.Pages;
 using HdrImageViewer.Presentation;
@@ -27,12 +29,26 @@ public sealed partial class MainWindow : Window
     private const int WindowPositionDebounceMilliseconds = 100;
     private const int SwRestore = 9;
 
+    // Windows Photos-style title-bar toolbar auto-hide. The row and its native
+    // caption buttons always stay in place; only the content is hidden, so the
+    // window keeps its supported drag/resize regions. 56 DIPs is the 48 DIP
+    // title-bar row plus a small forgiveness margin into the image area.
+    private const double ViewerToolbarRevealZoneDips = 56.0;
+    private const int ViewerToolbarWatchIntervalMilliseconds = 120;
+    private const int ViewerToolbarHideDelayFloorMilliseconds = 250;
+
     private readonly IReadOnlyList<string> _activationFilePaths;
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _windowPositionTimer;
     private IReadOnlyList<string>? _pendingExternalFilePaths;
     private bool _isInitialNavigationComplete;
     private bool _isImmersiveViewing;
     private bool _isClosed;
+    private CommandBar? _viewerCommandBar;
+    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _viewerToolbarWatchTimer;
+    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _viewerToolbarHideTimer;
+    private bool _isViewerToolbarContentVisible = true;
+    private bool _isViewerToolbarAutoHideActive;
+    private readonly PointerEventHandler _viewerToolbarPointerMovedHandler;
 
     [DllImport("user32.dll")]
     private static extern uint GetDpiForWindow(IntPtr hWnd);
@@ -49,6 +65,34 @@ public sealed partial class MainWindow : Window
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool IsIconic(IntPtr hWnd);
 
+    [StructLayout(LayoutKind.Sequential)]
+    private struct Win32Point
+    {
+        public int X;
+        public int Y;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct Win32Rect
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetCursorPos(out Win32Point point);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool ScreenToClient(IntPtr hWnd, ref Win32Point point);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetClientRect(IntPtr hWnd, out Win32Rect rect);
+
     public event EventHandler<bool>? ImmersiveViewingChanged;
 
     public bool IsImmersiveViewing => _isImmersiveViewing;
@@ -62,7 +106,19 @@ public sealed partial class MainWindow : Window
     {
         _activationFilePaths = activationFilePaths ?? [];
         InitializeComponent();
-        ViewerCommandsHost.Children.Add(ViewerPage.TakeCommandBar());
+        _viewerCommandBar = ViewerPage.TakeCommandBar();
+        _viewerCommandBar.Opening += ViewerCommandBar_Opening;
+        _viewerCommandBar.Closing += ViewerCommandBar_Closing;
+        ViewerCommandsHost.Children.Add(_viewerCommandBar);
+        _viewerToolbarPointerMovedHandler = WindowRoot_PointerMoved;
+        WindowRoot.AddHandler(
+            UIElement.PointerMovedEvent,
+            _viewerToolbarPointerMovedHandler,
+            handledEventsToo: true);
+        WindowRoot.AddHandler(
+            UIElement.KeyDownEvent,
+            new KeyEventHandler(WindowRoot_KeyDownHandledToo),
+            handledEventsToo: true);
         var visibilityMotion = new VisibilityMotion(DispatcherQueue);
         visibilityMotion.Add(NavFrame, new Vector3(0, 24, 0));
         visibilityMotion.Add(ViewerPage, Vector3.Zero);
@@ -81,6 +137,7 @@ public sealed partial class MainWindow : Window
         Closed += MainWindow_Closed;
         WindowRoot.ActualThemeChanged += WindowRoot_ActualThemeChanged;
         ApplyTheme(AppSettingsService.Current.Theme);
+        RefreshViewerToolbarChrome();
     }
 
     private void ResizeToInitialDesignSize()
@@ -101,6 +158,16 @@ public sealed partial class MainWindow : Window
 
         _isClosed = true;
         _windowPositionTimer?.Stop();
+        _viewerToolbarWatchTimer?.Stop();
+        _viewerToolbarHideTimer?.Stop();
+        if (_viewerCommandBar is not null)
+        {
+            _viewerCommandBar.Opening -= ViewerCommandBar_Opening;
+            _viewerCommandBar.Closing -= ViewerCommandBar_Closing;
+            _viewerCommandBar = null;
+        }
+
+        WindowRoot.RemoveHandler(UIElement.PointerMovedEvent, _viewerToolbarPointerMovedHandler);
         WindowRoot.ActualThemeChanged -= WindowRoot_ActualThemeChanged;
         ViewerPage.ViewModel.PropertyChanged -= ViewerViewModel_PropertyChanged;
         AppWindow.Changed -= AppWindow_Changed;
@@ -112,6 +179,7 @@ public sealed partial class MainWindow : Window
     private void AppSettingsService_SettingsChanged(object? sender, EventArgs e)
     {
         ApplyTheme(AppSettingsService.Current.Theme);
+        RefreshViewerToolbarChrome();
     }
 
     private void ApplyTheme(AppTheme theme)
@@ -141,8 +209,40 @@ public sealed partial class MainWindow : Window
 
     private void WindowRoot_KeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
     {
+        if (_isViewerToolbarAutoHideActive && !_isViewerToolbarContentVisible)
+        {
+            // Keyboard users cannot focus collapsed toolbar content, so any key
+            // press reveals the title-bar commands again (Windows Photos shows
+            // its chrome on interaction as well).
+            _viewerToolbarHideTimer?.Stop();
+            SetViewerToolbarContentVisible(true);
+        }
+
         if (ViewerPage.Visibility == Visibility.Visible)
             ViewerPage.HandleViewerKeyDown(sender, e);
+    }
+
+    /// <summary>
+    /// Fallback for keys that a child control (typically the filmstrip ListView)
+    /// already marked handled: image navigation still has to happen. The flag set
+    /// by the page's own handler prevents navigating twice.
+    /// </summary>
+    private async void WindowRoot_KeyDownHandledToo(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
+    {
+        if (_isClosed || ViewerPage.Visibility != Visibility.Visible)
+        {
+            return;
+        }
+
+        if (ViewerPage.ConsumeViewerArrowKeyHandledByPage())
+        {
+            return;
+        }
+
+        if (e.Handled)
+        {
+            await ViewerPage.HandleViewerArrowKeyAfterChildAsync(e);
+        }
     }
 
     private void ViewerViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -150,6 +250,13 @@ public sealed partial class MainWindow : Window
         if (e.PropertyName is nameof(ImageWorkspaceViewModel.FileName) or nameof(ImageWorkspaceViewModel.HasImage))
         {
             UpdateWindowTitle();
+        }
+
+        if (e.PropertyName is nameof(ImageWorkspaceViewModel.HasImage))
+        {
+            // Opening/closing an image changes whether the title-bar commands
+            // auto-hide; the toolbar is hidden by default while an image is shown.
+            RefreshViewerToolbarChrome();
         }
     }
 
@@ -162,7 +269,7 @@ public sealed partial class MainWindow : Window
         if (NavFrame.Visibility == Visibility.Visible)
             title = Localization.GetString("AppTitle");
         var showingContentPage = NavFrame.Visibility == Visibility.Visible;
-        ViewerTitleContent.Visibility = showingContentPage ? Visibility.Collapsed : Visibility.Visible;
+        ApplyViewerToolbarContentVisibility();
         AppTitleBar.Title = showingContentPage ? title : string.Empty;
         ViewerFileName.Text = title;
         ToolTipService.SetToolTip(ViewerFileName, title);
@@ -255,6 +362,7 @@ public sealed partial class MainWindow : Window
         NavFrame.BackStack.Clear();
         AppTitleBar.IsBackButtonVisible = false;
         UpdateWindowTitle();
+        RefreshViewerToolbarChrome();
     }
 
     private void ShowContentPage(Type pageType)
@@ -271,6 +379,7 @@ public sealed partial class MainWindow : Window
         ViewerPage.Visibility = Visibility.Collapsed;
         NavFrame.Visibility = Visibility.Visible;
         UpdateWindowTitle();
+        RefreshViewerToolbarChrome();
     }
 
     public bool ToggleImmersiveViewing()
@@ -350,6 +459,296 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    // ---- Viewer toolbar auto-hide -----------------------------------------
+    //
+    // In the normal viewer (image shown, not the settings/about frame, not
+    // immersive) the title-bar CommandBar and the file-name row are hidden by
+    // default and revealed Windows Photos style when the pointer approaches the
+    // top edge. WinUI's TitleBar cannot be fully collapsed without also losing
+    // the native caption buttons and the supported drag/resize regions, so the
+    // title-bar row height and caption buttons are left untouched and only the
+    // content row (ViewerTitleContent) is collapsed. The empty row therefore
+    // stays a valid drag region for the window.
+
+    private void ViewerCommandBar_Opening(object? sender, object e)
+    {
+        if (!_isViewerToolbarAutoHideActive)
+        {
+            return;
+        }
+
+        _viewerToolbarHideTimer?.Stop();
+        SetViewerToolbarContentVisible(true);
+    }
+
+    private void ViewerCommandBar_Closing(object? sender, object e)
+    {
+        if (!_isViewerToolbarAutoHideActive)
+        {
+            return;
+        }
+
+        ScheduleViewerToolbarHide();
+    }
+
+    private void WindowRoot_PointerMoved(object sender, PointerRoutedEventArgs e)
+    {
+        if (!_isViewerToolbarAutoHideActive || WindowRoot is null)
+        {
+            return;
+        }
+
+        var position = e.GetCurrentPoint(WindowRoot).Position;
+        if (position.Y > ViewerToolbarRevealZoneDips)
+        {
+            return;
+        }
+
+        _viewerToolbarHideTimer?.Stop();
+        if (!_isViewerToolbarContentVisible)
+        {
+            SetViewerToolbarContentVisible(true);
+        }
+    }
+
+    /// <summary>
+    /// Recomputes whether the title-bar content should auto-hide and applies the
+    /// initial state. Called when the viewer mode, image, immersive state or the
+    /// auto-hide delay setting changes.
+    /// </summary>
+    private void RefreshViewerToolbarChrome()
+    {
+        if (_isClosed)
+        {
+            return;
+        }
+
+        var viewerMode = NavFrame.Visibility != Visibility.Visible
+            && ViewerPage.Visibility == Visibility.Visible;
+        var delayMilliseconds = AppUserSettings.NormalizeViewerChromeAutoHideMilliseconds(
+            AppSettingsService.Current.ViewerChromeAutoHideMilliseconds);
+        // The floating-toolbar setting is authoritative: its documented 0 value
+        // ("never hide") must also pin the title-bar toolbar, so the user can
+        // keep the commands permanently visible. The shipped default (2200 ms)
+        // still gives the Windows Photos-style hide-by-default behaviour.
+        var canAutoHide = viewerMode
+            && !_isImmersiveViewing
+            && ViewerPage.ViewModel.HasImage
+            && delayMilliseconds > 0;
+        var wasActive = _isViewerToolbarAutoHideActive;
+        _isViewerToolbarAutoHideActive = canAutoHide;
+        if (!canAutoHide)
+        {
+            _viewerToolbarWatchTimer?.Stop();
+            _viewerToolbarHideTimer?.Stop();
+            SetViewerToolbarContentVisible(true);
+            return;
+        }
+
+        EnsureViewerToolbarTimers();
+        var hideDelay = Math.Max(delayMilliseconds, ViewerToolbarHideDelayFloorMilliseconds);
+        if (_viewerToolbarHideTimer is { } hideTimer
+            && Math.Abs(hideTimer.Interval.TotalMilliseconds - hideDelay) > 1.0)
+        {
+            hideTimer.Interval = TimeSpan.FromMilliseconds(hideDelay);
+        }
+
+        _viewerToolbarWatchTimer!.Start();
+        if (!wasActive)
+        {
+            // Entering the auto-hide mode (image opened, back from settings or
+            // immersive): hidden by default unless the user is already at the top.
+            _viewerToolbarHideTimer?.Stop();
+            SetViewerToolbarContentVisible(ViewerToolbarShouldStayVisible());
+        }
+    }
+
+    private void EnsureViewerToolbarTimers()
+    {
+        if (_viewerToolbarWatchTimer is null)
+        {
+            var watchTimer = DispatcherQueue.CreateTimer();
+            watchTimer.Interval = TimeSpan.FromMilliseconds(ViewerToolbarWatchIntervalMilliseconds);
+            watchTimer.IsRepeating = true;
+            watchTimer.Tick += ViewerToolbarWatchTimer_Tick;
+            _viewerToolbarWatchTimer = watchTimer;
+        }
+
+        if (_viewerToolbarHideTimer is null)
+        {
+            var hideTimer = DispatcherQueue.CreateTimer();
+            hideTimer.IsRepeating = false;
+            hideTimer.Tick += ViewerToolbarHideTimer_Tick;
+            _viewerToolbarHideTimer = hideTimer;
+        }
+    }
+
+    private void ViewerToolbarWatchTimer_Tick(Microsoft.UI.Dispatching.DispatcherQueueTimer sender, object args)
+    {
+        if (!_isViewerToolbarAutoHideActive)
+        {
+            sender.Stop();
+            return;
+        }
+
+        if (!_isViewerToolbarContentVisible)
+        {
+            _viewerToolbarHideTimer?.Stop();
+            if (ViewerToolbarShouldStayVisible())
+            {
+                SetViewerToolbarContentVisible(true);
+            }
+
+            return;
+        }
+
+        if (ViewerToolbarShouldStayVisible())
+        {
+            _viewerToolbarHideTimer?.Stop();
+            return;
+        }
+
+        ScheduleViewerToolbarHide();
+    }
+
+    private void ViewerToolbarHideTimer_Tick(Microsoft.UI.Dispatching.DispatcherQueueTimer sender, object args)
+    {
+        sender.Stop();
+        if (!_isViewerToolbarAutoHideActive
+            || !_isViewerToolbarContentVisible
+            || ViewerToolbarShouldStayVisible())
+        {
+            return;
+        }
+
+        SetViewerToolbarContentVisible(false);
+    }
+
+    private void ScheduleViewerToolbarHide()
+    {
+        if (_viewerToolbarHideTimer is { IsRunning: false })
+        {
+            _viewerToolbarHideTimer.Start();
+        }
+    }
+
+    private bool ViewerToolbarShouldStayVisible()
+    {
+        if (_viewerCommandBar?.IsOpen == true)
+        {
+            return true;
+        }
+
+        if (ViewerToolbarHasKeyboardFocus())
+        {
+            return true;
+        }
+
+        return IsPointerInViewerToolbarRevealZone();
+    }
+
+    private bool ViewerToolbarHasKeyboardFocus()
+    {
+        var xamlRoot = ViewerTitleContent.XamlRoot;
+        if (xamlRoot is null)
+        {
+            return false;
+        }
+
+        if (FocusManager.GetFocusedElement(xamlRoot) is not Control
+            { FocusState: FocusState.Keyboard or FocusState.Programmatic } focused)
+        {
+            return false;
+        }
+
+        for (DependencyObject? current = focused; current is not null; current = VisualTreeHelper.GetParent(current))
+        {
+            if (ReferenceEquals(current, ViewerTitleContent))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool IsPointerInViewerToolbarRevealZone()
+    {
+        if (!GetCursorPos(out var point))
+        {
+            return false;
+        }
+
+        var hwnd = Win32Interop.GetWindowFromWindowId(AppWindow.Id);
+        if (hwnd == IntPtr.Zero
+            || !GetClientRect(hwnd, out var clientRect)
+            || clientRect.Right <= clientRect.Left
+            || clientRect.Bottom <= clientRect.Top
+            || !ScreenToClient(hwnd, ref point))
+        {
+            return false;
+        }
+
+        if (point.X < clientRect.Left || point.X > clientRect.Right
+            || point.Y < clientRect.Top || point.Y > clientRect.Bottom)
+        {
+            return false;
+        }
+
+        var scale = GetDpiForWindow(hwnd) / 96.0;
+        if (scale <= 0.0)
+        {
+            scale = 1.0;
+        }
+
+        var yDips = (point.Y - clientRect.Top) / scale;
+        return yDips >= 0.0 && yDips <= ViewerToolbarRevealZoneDips;
+    }
+
+    private void SetViewerToolbarContentVisible(bool visible)
+    {
+        if (_isViewerToolbarContentVisible == visible)
+        {
+            ApplyViewerToolbarContentVisibility();
+            return;
+        }
+
+        _isViewerToolbarContentVisible = visible;
+        ApplyViewerToolbarContentVisibility();
+    }
+
+    private void ApplyViewerToolbarContentVisibility()
+    {
+        var showingContentPage = NavFrame.Visibility == Visibility.Visible;
+        var target = !showingContentPage && _isViewerToolbarContentVisible
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        if (ViewerTitleContent.Visibility == target)
+        {
+            return;
+        }
+
+        ViewerTitleContent.Visibility = target;
+        // Recompute after layout so the emptied title-bar row becomes the drag
+        // region again (or the command bar becomes interactive when revealed).
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            if (_isClosed)
+            {
+                return;
+            }
+
+            try
+            {
+                AppTitleBar.RecomputeDragRegions();
+            }
+            catch (Exception ex)
+            {
+                App.LogUnhandledUiException("MainWindow.RecomputeDragRegions", ex);
+            }
+        });
+    }
+
     private void ApplyImmersiveShell(bool isImmersive)
     {
         if (_isImmersiveViewing == isImmersive)
@@ -360,6 +759,7 @@ public sealed partial class MainWindow : Window
         _isImmersiveViewing = isImmersive;
         AppTitleBar.Visibility = isImmersive ? Visibility.Collapsed : Visibility.Visible;
         TitleBarRow.Height = isImmersive ? new GridLength(0) : new GridLength(48);
+        RefreshViewerToolbarChrome();
         ImmersiveViewingChanged?.Invoke(this, isImmersive);
     }
 }

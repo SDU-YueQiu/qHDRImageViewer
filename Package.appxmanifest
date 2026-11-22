@@ -8,14 +8,14 @@
   IgnorableNamespaces="uap rescap">
 
   <Identity
-    Name="LinYuSen.HDRImageViewer"
+    Name="LinYuSen.qHdrImageViewer"
     Publisher="CN=5AFD1CFB-7F2A-4E5F-BCBB-58676BBD3F8C"
-    Version="1.0.46.0" />
+    Version="1.2.3.0" />
 
   <mp:PhoneIdentity PhoneProductId="4F314C0D-BB1A-413A-80E8-3106FA517F38" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
-    <DisplayName>HdrImageViewer</DisplayName>
+    <DisplayName>qHdrImageViewer</DisplayName>
     <PublisherDisplayName>LinYuSen</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
@@ -45,7 +45,7 @@
       Executable="$targetnametoken$.exe"
       EntryPoint="$targetentrypoint$">
       <uap:VisualElements
-        DisplayName="HdrImageViewer"
+        DisplayName="qHdrImageViewer"
         Description="ms-resource:AppxManifestDescription"
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
@@ -55,7 +55,7 @@
       </uap:VisualElements>
       <Extensions>
         <uap:Extension Category="windows.fileTypeAssociation">
-          <uap:FileTypeAssociation Name="hdrimageviewer.images">
+          <uap:FileTypeAssociation Name="qhdrimageviewer.images">
             <uap:DisplayName>ms-resource:AppxManifestFileTypeHdrImage</uap:DisplayName>
             <uap:SupportedFileTypes>
               <uap:FileType>.jpg</uap:FileType>
@@ -85,3 +85,7 @@
     <rescap:Capability Name="runFullTrust" />
   </Capabilities>
 </Package>
+
+
+
+

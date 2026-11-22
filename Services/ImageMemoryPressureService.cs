@@ -56,10 +56,25 @@ internal static class ImageMemoryPressureService
     private static long s_lastCheckTicks = -CheckCooldownMilliseconds;
     private static int s_checkScheduled;
 
+    /// <summary>
+    /// Gets or sets whether automatic cache trimming and forced collection react
+    /// to memory pressure. Enabled by default; the MemoryPressureAutoTrim setting
+    /// drives this at startup and on change.
+    /// </summary>
+    public static bool AutoTrimEnabled { get; set; } = true;
+
     public static void ReportEvictedBytes(long byteCount)
     {
         if (byteCount <= 0)
         {
+            return;
+        }
+
+        if (!AutoTrimEnabled)
+        {
+            // Drop the accumulator so re-enabling trimming does not act on
+            // evictions that happened while it was disabled.
+            Interlocked.Exchange(ref s_evictedBytes, 0);
             return;
         }
 
@@ -103,6 +118,11 @@ internal static class ImageMemoryPressureService
         try
         {
             Interlocked.Exchange(ref s_lastCheckTicks, Environment.TickCount64);
+            if (!AutoTrimEnabled)
+            {
+                return;
+            }
+
             var memoryInfo = GC.GetGCMemoryInfo();
             var snapshot = new ImageMemoryPressureSnapshot(
                 memoryInfo.MemoryLoadBytes,

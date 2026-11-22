@@ -182,6 +182,11 @@ public sealed partial class HomePage
 
     private async Task RestoreViewerSessionAsync()
     {
+        if (!_settings.RestoreLastImageOnStartup)
+        {
+            return;
+        }
+
         if (!ViewerSessionState.TryGetLastImage(
             out var path,
             out var navigationPaths,

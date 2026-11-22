@@ -4,7 +4,25 @@ namespace HdrImageViewer.Services;
 
 public static class ImagePreloadCache
 {
-    private const long MaxDecodedPixelCacheBytes = 320L * 1024L * 1024L;
+    public const int DefaultDecodedCacheBudgetMegabytes = 320;
+    public const int MinDecodedCacheBudgetMegabytes = 64;
+    public const int MaxDecodedCacheBudgetMegabytes = 1024;
+
+    private static long s_decodedCacheBudgetBytes = DefaultDecodedCacheBudgetMegabytes * 1024L * 1024L;
+
+    /// <summary>
+    /// Gets or sets the decoded-pixel budget. The default preserves the historical
+    /// 320 MB budget; the settings page drives this at startup and on change.
+    /// </summary>
+    public static int DecodedCacheBudgetMegabytes
+    {
+        get => (int)(Interlocked.Read(ref s_decodedCacheBudgetBytes) / (1024L * 1024L));
+        set => Interlocked.Exchange(
+            ref s_decodedCacheBudgetBytes,
+            Math.Clamp(value, MinDecodedCacheBudgetMegabytes, MaxDecodedCacheBudgetMegabytes) * 1024L * 1024L);
+    }
+
+    private static long DecodedCacheBudgetBytes => Interlocked.Read(ref s_decodedCacheBudgetBytes);
 
     private static readonly ConcurrentDictionary<string, CacheEntry> s_cache = new(StringComparer.OrdinalIgnoreCase);
     private static readonly ConcurrentDictionary<string, long> s_lastAccessTicks = new(StringComparer.OrdinalIgnoreCase);
@@ -314,6 +332,18 @@ public static class ImagePreloadCache
         return evictedBytes;
     }
 
+    /// <summary>
+    /// Evicts least-recently-used decoded payloads until the configured budget is
+    /// met. Used after the user lowers the decoded cache budget at runtime.
+    /// </summary>
+    public static long TrimToDecodedBudget()
+    {
+        var evictedBytes = TrimDecodedPayloadsToBudget(
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+        ImageMemoryPressureService.ReportEvictedBytes(evictedBytes);
+        return evictedBytes;
+    }
+
     private static void TouchLastAccess(string path)
     {
         s_lastAccessTicks[path] = Environment.TickCount64;
@@ -399,7 +429,7 @@ public static class ImagePreloadCache
         IReadOnlySet<string> priorityPaths)
     {
         var totalBytes = s_cache.Values.Sum(entry => entry.DecodedByteCount);
-        if (totalBytes <= MaxDecodedPixelCacheBytes)
+        if (totalBytes <= DecodedCacheBudgetBytes)
         {
             return 0L;
         }
@@ -415,7 +445,7 @@ public static class ImagePreloadCache
 
         foreach (var (path, entry) in candidates)
         {
-            if (totalBytes <= MaxDecodedPixelCacheBytes)
+            if (totalBytes <= DecodedCacheBudgetBytes)
             {
                 break;
             }

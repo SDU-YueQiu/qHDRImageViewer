@@ -179,6 +179,22 @@ public sealed class FolderImageIndexCacheTests
         }
     }
 
+    [Fact]
+    public void MaximumCachedDirectories_DefaultsToFourAndCanBeConfigured()
+    {
+        var original = FolderImageIndexCache.MaximumCachedDirectories;
+        try
+        {
+            Assert.Equal(FolderImageIndexCache.DefaultMaximumCachedDirectories, original);
+            FolderImageIndexCache.MaximumCachedDirectories = 2;
+            Assert.Equal(2, FolderImageIndexCache.MaximumCachedDirectories);
+        }
+        finally
+        {
+            FolderImageIndexCache.MaximumCachedDirectories = original;
+        }
+    }
+
     private static string CreateTemporaryDirectory()
     {
         var path = Path.Combine(

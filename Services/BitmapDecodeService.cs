@@ -721,7 +721,7 @@ public static class BitmapDecodeService
             throw new InvalidOperationException($"未找到 {(isAvif ? "avifdec.exe" : "heif-dec.exe")}。");
         }
 
-        var tempDir = Path.Combine(Path.GetTempPath(), "HdrImageViewer", "heif-avif-decode-" + Guid.NewGuid().ToString("N"));
+        var tempDir = Path.Combine(Path.GetTempPath(), "qHdrImageViewer", "heif-avif-decode-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tempDir);
         var pngPath = Path.Combine(tempDir, "decoded.png");
         try
@@ -844,7 +844,7 @@ public static class BitmapDecodeService
             maxPixelSize = null;
         }
 
-        var tempDir = Path.Combine(Path.GetTempPath(), "HdrImageViewer", "jxl-decode-" + Guid.NewGuid().ToString("N"));
+        var tempDir = Path.Combine(Path.GetTempPath(), "qHdrImageViewer", "jxl-decode-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tempDir);
         var pngPath = Path.Combine(tempDir, "decoded.png");
         var ppmPath = Path.Combine(tempDir, "decoded.ppm");
@@ -867,6 +867,17 @@ public static class BitmapDecodeService
             {
                 process.StartInfo.ArgumentList.Add("--bits_per_sample");
                 process.StartInfo.ArgumentList.Add("16");
+            }
+
+            if (transfer is DecodedBitmapTransfer.Pq or DecodedBitmapTransfer.Hlg)
+            {
+                // Pin the HDR output encoding explicitly. For images whose
+                // original profile is an ICC profile libjxl's default output is
+                // scene-linear sRGB, which must not be tagged as PQ/HLG.
+                process.StartInfo.ArgumentList.Add(
+                    transfer == DecodedBitmapTransfer.Pq
+                        ? "--color_space=RGB_D65_202_Rel_PeQ"
+                        : "--color_space=RGB_D65_202_Rel_HLG");
             }
             var downsampling = CalculateJxlDownsampling(info, maxPixelSize);
             if (downsampling > 1)
@@ -938,7 +949,7 @@ public static class BitmapDecodeService
     {
         var djxl = NativeToolLocator.FindTool("djxl.exe")
             ?? throw new InvalidOperationException("未找到 djxl.exe，无法预览线性 HDR JPEG XL。");
-        var tempDir = Path.Combine(Path.GetTempPath(), "HdrImageViewer", "jxl-linear-decode-" + Guid.NewGuid().ToString("N"));
+        var tempDir = Path.Combine(Path.GetTempPath(), "qHdrImageViewer", "jxl-linear-decode-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tempDir);
         var exrPath = Path.Combine(tempDir, "decoded.exr");
         try
@@ -1038,7 +1049,7 @@ public static class BitmapDecodeService
             nativeFallbackReason = $"{ex.GetType().Name}: {ex.Message}";
         }
 
-        var tempDir = Path.Combine(Path.GetTempPath(), "HdrImageViewer", "exr-decode-" + Guid.NewGuid().ToString("N"));
+        var tempDir = Path.Combine(Path.GetTempPath(), "qHdrImageViewer", "exr-decode-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tempDir);
         var pfmPath = Path.Combine(tempDir, "decoded.pfm");
         try

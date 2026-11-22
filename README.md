@@ -1,6 +1,6 @@
-# HDR Image Viewer
+# qHdrImageViewer
 
-HDR Image Viewer 是一个面向 Windows 的 WinUI 3 图片查看器，重点支持 HDR 静态图片、gain map 图片和常见 HDR 容器的探测/预览。项目仍在快速开发中，当前目标是把 Ultra HDR、HEIF/AVIF、JPEG XL、OpenEXR 等格式的打开、显示、裁剪和导出流程逐步做完整。
+qHdrImageViewer 是一个面向 Windows 的 WinUI 3 HDR 图片查看器（原 HDR Image Viewer 项目的个人维护分支，GPLv3 与原有版权声明保留），重点支持 HDR 静态图片、gain map 图片和常见 HDR 容器的探测/预览。项目仍在快速开发中，当前目标是把 Ultra HDR、HEIF/AVIF、JPEG XL、OpenEXR 等格式的打开、显示、裁剪和导出流程逐步做完整。
 
 ## 当前能力
 
@@ -8,11 +8,14 @@ HDR Image Viewer 是一个面向 Windows 的 WinUI 3 图片查看器，重点支
 - Direct3D 11 HDR 渲染：通过 `SwapChainPanel` 呈现 FP16 scRGB swap chain。
 - JPEG Ultra HDR / Adobe / ISO 21496 / Apple gain map：内置 JPEG APP2/XMP 探测和 shader 重建路径。
 - HEIF / HEIC / AVIF：探测 PQ、HLG、BT.2020、Display P3、bit depth、辅助 gain-map 和 ISO tmap/gain-map 信号，并接入进程内 HDR gain-map 重建。
-- JPEG XL：通过内置 `libjxl` 原生进程内探测与解码（支持单层 SDR/PQ/HLG/线性浮点、Alpha 通道及 `jhgm` gain-map 重建，`jxlinfo.exe` / `djxl.exe` 作为回退）。
-- OpenEXR 与 Radiance HDR：OpenEXR 通过 `HdrImageViewer.Native` 零拷贝解码为 RGBA16F；Radiance `.hdr`（RGBE/XYZE）通过内置纯 C# 解码器直出线性 scRGB。
+- JPEG XL：通过内置 `libjxl` 原生进程内探测与解码（支持单层 SDR/PQ/HLG/线性浮点、Alpha 通道及 `jhgm` gain-map 重建，`jxlinfo.exe` / `djxl.exe` 作为回退）。发布包已内置 `libjxl` 与 CLI 工具。
+- OpenEXR 与 Radiance HDR：OpenEXR 通过 `HdrImageViewer.Native` 零拷贝解码为 RGBA16F（发布包已内置该原生桥及其 DLL 依赖）；Radiance `.hdr`（RGBE/XYZE）通过内置纯 C# 解码器直出线性 scRGB。
 - Live Photo / Motion Photo：探测同名 sidecar 视频、JPEG 内嵌 Motion Photo 和 AVIF/HEIC 内的 `mpvd` 动态视频，支持基于文件流切片的零拷贝内嵌视频播放，避免 `%TEMP%` 临时文件堆积。
 - 云端文件保护：OneDrive、iCloud 等在线占位文件不会在预加载、胶片栏缩略图和 sidecar 视频探测中触发自动下载，只读取不召回的文件属性并显示 shell 云预览缩略图；打开或播放仍按需下载，可在设置中关闭。
 - HDR 导出：SDR 预览导出、JPEG Ultra HDR / HEIC / AVIF ISO Gain Map 导出、单层 HDR PNG（16-bit cICP）/ TIFF（32-bit float）/ JXR / EXR / JXL / AVIF / HEIC 导出与批量导出。
+- 缩放：滚轮/按钮每步 ×1.1（≈10%），右下角按钮在「适合窗口 ↔ 100% 实际大小」间切换（与 Windows 照片一致）；设置页可分别选择「放大插值（>100%）」和「缩小插值（<100%）」算法（自动 / 最近邻 / 双线性 / 双三次 / Lanczos）。
+- 设置页：左侧导航 7 个分区、Ctrl+K 搜索、单项/整页/全部恢复默认、JSON 导入导出、诊断信息，38+ 项设置持久化到 `%LOCALAPPDATA%\qHdrImageViewer\settings.json`。
+- RTX VSR（可选，需 NVIDIA RTX 显卡与 VFX 运行库）：图片右键菜单中的「RTX VSR 超分」可按四个模式（标准超分 / 去噪 / 去模糊 / 高码率）× 四个质量档位（低 / 中 / 高 / 极高）增强当前图片；开启/关闭前后保持缩放与位置不变，便于直接对比（菜单项文字会变为「关闭 RTX VSR 超分」）。设置页的开关只控制该右键菜单项是否显示，不会自动处理图片。顶部工具栏默认隐藏、仅激活时显示只读 VSR 徽章。
 
 ## 格式支持状态
 
@@ -24,8 +27,8 @@ HDR Image Viewer 是一个面向 Windows 的 WinUI 3 图片查看器，重点支
 | JPEG XR / WDP / HDP | 已支持 | 优先 WIC FP16/scRGB；失败时回退到 WinRT RGBA16/RGBA8 预览 | 单层 FP16 scRGB JXR 导出已支持 | 依赖 Windows WIC / Windows Imaging 解码与编码能力。 |
 | HEIF / HEIC | 已支持 | 单层 PQ/HLG、广色域 SDR、Apple 辅助 gain map 和 ISO tmap 已支持 | 单层 HDR 使用 `heif-enc.exe`；ISO Gain Map 使用 `ultrahdr_app.exe` | 单层 HDR 与 aux/tmap 优先走进程内 LibHeifSharp；primary/base 走 Windows Imaging。 |
 | AVIF | 已支持 | 单层 PQ/HLG、广色域 SDR 和 ISO tmap gain map 已支持 | 单层 HDR 使用 `avifenc.exe`；ISO Gain Map 使用 `ultrahdr_app.exe` | 单层 HDR 与 ISO `tmap` gain map 均通过进程内 LibHeifSharp + ISO 元数据读取器直接解码。 |
-| JPEG XL / JXL | 已支持 | 单层 SDR/PQ/HLG/线性及 `jhgm` gain map 已支持 | 单层 HDR 导出需要 `cjxl.exe` | 优先通过 `libjxl.dll` 进程内完成探测、主图解码和 `jhgm` 码流解码；缺失时回退至 `jxlinfo.exe` / `djxl.exe`。 |
-| OpenEXR / EXR | 已支持 | 已支持 scene-linear float/half 零拷贝解码到 RGBA16F | 单层 HDR 导出通过 native bridge | 使用 `HdrImageViewer.Native` + OpenEXR。 |
+| JPEG XL / JXL | 已支持 | 单层 SDR/PQ/HLG/线性及 `jhgm` gain map 已支持 | 单层 HDR 导出使用内置 `cjxl.exe` | 发布包内置 `libjxl.dll`，进程内完成探测、主图解码和 `jhgm` 码流解码；`jxlinfo.exe` / `djxl.exe` 作为回退。 |
+| OpenEXR / EXR | 已支持 | 已支持 scene-linear float/half 零拷贝解码到 RGBA16F | 单层 HDR 导出通过 native bridge | 发布包内置 `HdrImageViewer.Native` + OpenEXR。 |
 | Radiance HDR / RGBE | 已支持 | 已支持 RGBE / XYZE 游程解码到线性 RGBA16F | 可导出为其他单层 HDR / Gain Map 格式 | 内置纯 C# RGBE/RLE 解码器，无需外部工具。 |
 | Live Photo / Motion Photo | 已支持 | 静态帧走现有 HDR renderer；动态片段走零拷贝流式媒体层叠加播放 | 暂未支持保留/重新导出动态照片包 | 支持同名 `.mov` / `.mp4` / `.m4v` sidecar、JPEG XMP Motion Photo 和 HEIC/AVIF `mpvd`。 |
 | WebP | SDR 基线 / 取决于系统解码器 | 暂未作为 HDR 主路径 | SDR 导出 | 普通图片兼容路径，支持透明通道与 EXIF 读取。 |
@@ -36,34 +39,35 @@ HDR Image Viewer 是一个面向 Windows 的 WinUI 3 图片查看器，重点支
 
 GitHub Releases 会提供 portable zip，适合高级用户、测试用户或需要独立目录运行的用户：
 
-1. 下载 `HdrImageViewer-<version>-win-x64-portable.zip`。
-2. 解压到普通目录，例如 `C:\Apps\HdrImageViewer`。
-3. 运行 `HdrImageViewer.exe`。
+1. 下载 `qHdrImageViewer-<version>-win-x64-portable.zip`。
+2. 解压到普通目录，例如 `C:\Apps\qHdrImageViewer`。
+3. 运行 `qHdrImageViewer.exe`。
 
 portable zip 需要 x64 版 .NET 10 Desktop Runtime 和 Windows App Runtime 2.5，不需要安装证书。因为 GitHub build 未签名，Windows 可能显示 SmartScreen 提示。
 
-## 可选格式工具
+## 编解码器与可选工具
 
-大多数格式（包含 JPEG Ultra HDR、PNG、TIFF、HEIC/AVIF、OpenEXR、Radiance `.hdr` 以及内置 `libjxl.dll` 下的 JPEG XL 预览）均通过进程内解码器直接打开。以下导出或回退能力调用命令行编码工具；用户自行安装工具时，本项目没有重新分发这些第三方二进制，只有发布包主动携带 `encoders\<arch>` 中的工具时才涉及对应二进制再分发义务。运行时查找顺序是应用输出目录 `encoders\<arch>`、`C:\msys64\ucrt64\bin`，最后是 `PATH`：
+发布包（MSIX 与 portable zip）已经内置固定版本的编解码工具和原生 OpenEXR 桥，普通用户不需要再安装 MSYS2 或其他工具：
 
-- JPEG XL CLI 回退与导出：`cjxl.exe`（导出）、`djxl.exe` / `jxlinfo.exe`（当 `libjxl.dll` 不可用时的回退）。
-- AVIF HDR 导出：`avifenc.exe`。
-- HEIF / HEIC HDR 导出：`heif-enc.exe`。
-- JPEG / HEIC / AVIF Gain Map 导出：`ultrahdr_app.exe`。
+- 应用目录 `encoders\x64\`：`cjxl.exe` / `djxl.exe` / `jxlinfo.exe`、`avifenc.exe` / `avifdec.exe`、`heif-enc.exe`、`ultrahdr_app.exe` 及其运行时 DLL、许可证和 `codec-manifest.json`。
+- 应用根目录：`HdrImageViewer.Native.dll`（OpenEXR 桥）及其 DLL 依赖。
+- 这些二进制的版本、来源与 SHA256 固定在 `eng\codecs.lock.json`，可用 `eng\verify-codecs.ps1` 复核。运行时查找顺序是应用目录 `encoders\<arch>`、`C:\msys64\ucrt64\bin`，最后是 `PATH`（因此开发机上的 MSYS2 工具仍可作为后备）。
 
-用 MSYS2 UCRT64 安装常用可选工具：
+从源码构建完整发布包时才需要 MSYS2 UCRT64 工具链（gcc/g++/cmake/ninja）：
 
 ```powershell
 winget install --id MSYS2.MSYS2 --source winget
-C:\msys64\usr\bin\pacman.exe -Syu --noconfirm
-C:\msys64\usr\bin\pacman.exe -S --needed --noconfirm mingw-w64-ucrt-x86_64-libjxl mingw-w64-ucrt-x86_64-libavif mingw-w64-ucrt-x86_64-libheif
+C:\msys64\usr\bin\pacman.exe -S --needed --noconfirm mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-cmake mingw-w64-ucrt-x86_64-ninja
+$env:HDRIV_MSYS2_ROOT = 'C:\msys64'
+python .\eng\build-codecs.py --msys C:\msys64 --apply
+.\eng\verify-codecs.ps1
 ```
 
-安装后重启 HDR Image Viewer。
+NVIDIA RTX VSR 运行库（`NVVideoEffects.dll` 等）因 NVIDIA 许可限制不随安装包分发，程序会在运行时自动查找（见上文说明）。
 
 ## 多语言支持 / Languages
 
-HDR Image Viewer 现已支持完整的国际化 (i18n) 与本地化架构，内置支持 12 种语言：
+qHdrImageViewer 现已支持完整的国际化 (i18n) 与本地化架构，内置支持 12 种语言：
 
 | 语言代码 | 语言 (Language) | 本地化名称 (Native Name) |
 | --- | --- | --- |
@@ -103,13 +107,13 @@ HDR Image Viewer 现已支持完整的国际化 (i18n) 与本地化架构，内�
 ## 构建
 
 ```powershell
-dotnet build .\HdrImageViewer.csproj -p:Platform=x64
+dotnet build .\qHdrImageViewer.csproj -p:Platform=x64
 ```
 
 运行：
 
 ```powershell
-dotnet run --project .\HdrImageViewer.csproj -p:Platform=x64 --no-build
+dotnet run --project .\qHdrImageViewer.csproj -p:Platform=x64 --no-build
 ```
 
 生成本地 portable zip：
@@ -118,7 +122,7 @@ dotnet run --project .\HdrImageViewer.csproj -p:Platform=x64 --no-build
 .\eng\publish-portable.ps1 -Version 1.0.46.0 -Platform x64
 ```
 
-`.github/workflows/release-portable.yml` 会在推送 `v*` tag 时运行同一套脚本，并把 `artifacts/HdrImageViewer-<version>-win-x64-portable.zip` 上传到 GitHub Release。可以设置仓库变量 `STORE_URL`，让 Release notes 自动包含 Microsoft Store 链接。
+`.github/workflows/release-portable.yml` 会在推送 `v*` tag 时运行同一套脚本，并把 `artifacts/qHdrImageViewer-<version>-win-x64-portable.zip` 上传到 GitHub Release。可以设置仓库变量 `STORE_URL`，让 Release notes 自动包含 Microsoft Store 链接。
 
 ## 路线图
 
@@ -130,3 +134,4 @@ dotnet run --project .\HdrImageViewer.csproj -p:Platform=x64 --no-build
 本项目采用 GPLv3 或后续版本授权，见 `LICENSE`。
 
 第三方库、NuGet 包和用户自行安装的外部命令行工具使用各自许可证，见 `THIRD_PARTY_NOTICES.md`。用户自行安装并由本应用通过子进程调用的 CLI 工具，不构成本项目对这些工具的二进制再分发；如果你重新分发包含这些工具的包，请单独确认对应许可证义务。
+

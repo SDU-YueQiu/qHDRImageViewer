@@ -83,6 +83,7 @@ public sealed partial class D3D11HdrRenderPipeline : IHdrRenderPipeline, IDispos
     private ID3D11PixelShader? _baseImagePixelShader;
     private ID3D11PixelShader? _linearizePixelShader;
     private ID3D11SamplerState? _linearClampSampler;
+    private ID3D11SamplerState? _pointClampSampler;
     private ID3D11Buffer? _gainMapConstantsBuffer;
     private ID3D11Texture2D? _primaryTexture;
     private ID3D11Texture2D? _gainMapTexture;
@@ -103,6 +104,7 @@ public sealed partial class D3D11HdrRenderPipeline : IHdrRenderPipeline, IDispos
     private string _d2dDestinationColorSummary = "none";
     private float _d2dMeasuredInputMaxNits;
     private HdrImageDocument? _document;
+    private bool _sdrOverrideActive;
     private string? _loadedGainMapPath;
     private DateTime? _loadedGainMapWriteTimeUtc;
     private bool _loadedGainMapMode;
@@ -122,6 +124,8 @@ public sealed partial class D3D11HdrRenderPipeline : IHdrRenderPipeline, IDispos
     private bool _adaptiveToneMappingEnabled;
     private float _referenceWhiteExposureScale = 1.0f;
     private ColorGamutMappingMode _colorGamutMappingMode = ColorGamutMappingMode.Managed;
+    private ZoomInterpolationMode _zoomInterpolationUpscale = ZoomInterpolationMode.Auto;
+    private ZoomDownscaleMode _zoomDownscale = ZoomDownscaleMode.Auto;
     private GainmapViewMode _viewMode = GainmapViewMode.Adaptive;
     private HdrHeadroomMode _headroomMode = HdrHeadroomMode.SystemAdaptive;
     private bool _toneMappingEnabledForCurrentFrame;
@@ -194,6 +198,23 @@ public sealed partial class D3D11HdrRenderPipeline : IHdrRenderPipeline, IDispos
         set => ApplySettings(Settings with { ColorGamutMappingMode = value });
     }
 
+    // Sampling filters used when the viewer resamples the image for display:
+    // the upscale mode applies above 100 % zoom (magnification), the dedicated
+    // downscale mode below 100 % (minification). Changing either only re-writes
+    // the per-frame shader constants; no pipeline, texture, or mip resource is
+    // recreated.
+    public ZoomInterpolationMode ZoomInterpolationUpscale
+    {
+        get => _zoomInterpolationUpscale;
+        set => ApplySettings(Settings with { ZoomInterpolationUpscale = value });
+    }
+
+    public ZoomDownscaleMode ZoomDownscale
+    {
+        get => _zoomDownscale;
+        set => ApplySettings(Settings with { ZoomDownscale = value });
+    }
+
     public HdrRendererSettings Settings => new(
         _viewMode,
         _headroomMode,
@@ -201,7 +222,9 @@ public sealed partial class D3D11HdrRenderPipeline : IHdrRenderPipeline, IDispos
         _adaptiveToneMappingEnabled,
         _referenceWhiteExposureScale,
         _colorGamutMappingMode,
-        _displayConfiguration);
+        _displayConfiguration,
+        _zoomInterpolationUpscale,
+        _zoomDownscale);
 
     public bool ApplySettings(HdrRendererSettings settings)
     {
@@ -223,6 +246,10 @@ public sealed partial class D3D11HdrRenderPipeline : IHdrRenderPipeline, IDispos
         var gamutMappingMode = Enum.IsDefined(settings.ColorGamutMappingMode)
             ? settings.ColorGamutMappingMode
             : ColorGamutMappingMode.Managed;
+        var zoomInterpolationUpscale = Enum.IsDefined(settings.ZoomInterpolationUpscale)
+            ? settings.ZoomInterpolationUpscale
+            : ZoomInterpolationMode.Auto;
+        var zoomDownscale = ZoomDownscaleModes.Normalize(settings.ZoomDownscale);
         var displayConfiguration = settings.DisplayConfiguration ?? HdrDisplayConfiguration.Unknown;
 
         if (_viewMode == viewMode
@@ -231,6 +258,8 @@ public sealed partial class D3D11HdrRenderPipeline : IHdrRenderPipeline, IDispos
             && _adaptiveToneMappingEnabled == settings.AdaptiveToneMappingEnabled
             && Math.Abs(_referenceWhiteExposureScale - exposureScale) <= 0.0001f
             && _colorGamutMappingMode == gamutMappingMode
+            && _zoomInterpolationUpscale == zoomInterpolationUpscale
+            && _zoomDownscale == zoomDownscale
             && Equals(_displayConfiguration, displayConfiguration))
         {
             return false;
@@ -242,6 +271,8 @@ public sealed partial class D3D11HdrRenderPipeline : IHdrRenderPipeline, IDispos
         _adaptiveToneMappingEnabled = settings.AdaptiveToneMappingEnabled;
         _referenceWhiteExposureScale = exposureScale;
         _colorGamutMappingMode = gamutMappingMode;
+        _zoomInterpolationUpscale = zoomInterpolationUpscale;
+        _zoomDownscale = zoomDownscale;
         _displayConfiguration = displayConfiguration;
         InvalidateToneMapAnalysis();
         _previewAnalysis.Invalidate();
@@ -342,6 +373,7 @@ public sealed partial class D3D11HdrRenderPipeline : IHdrRenderPipeline, IDispos
         {
             cancellationToken.ThrowIfCancellationRequested();
             _document = null;
+            _sdrOverrideActive = false;
             ReleaseGainMapResources();
             LastFrameHasVisiblePixels = false;
             _frameVerificationPending = false;
@@ -442,6 +474,7 @@ public sealed partial class D3D11HdrRenderPipeline : IHdrRenderPipeline, IDispos
         }
 
         _document = document;
+        _sdrOverrideActive = false;
         if (document.HasRenderableGainMap && _swapChain is not null)
         {
             await PresentGainMapFrameAsync(document, cancellationToken, fullResolution);
@@ -543,6 +576,20 @@ public sealed partial class D3D11HdrRenderPipeline : IHdrRenderPipeline, IDispos
         else
         {
             ConfigureSwapChainPanelScale();
+        }
+
+        if (_sdrOverrideActive)
+        {
+            if (_primaryTextureView is not null)
+            {
+                RenderSdrOverride();
+            }
+            else
+            {
+                LastRenderStatus = "SDR override redraw skipped: no override texture";
+            }
+
+            return;
         }
 
         if (_document?.HasRenderableGainMap == true)
@@ -842,6 +889,8 @@ public sealed partial class D3D11HdrRenderPipeline : IHdrRenderPipeline, IDispos
 
         _linearClampSampler ??=
             _device.CreateSamplerState(SamplerDescription.LinearClamp);
+        _pointClampSampler ??=
+            _device.CreateSamplerState(SamplerDescription.PointClamp);
         _gainMapConstantsBuffer ??= _device.CreateBuffer(
             (uint)Marshal.SizeOf<GainMapShaderConstants>(),
             BindFlags.ConstantBuffer,
@@ -849,6 +898,22 @@ public sealed partial class D3D11HdrRenderPipeline : IHdrRenderPipeline, IDispos
             CpuAccessFlags.None,
             ResourceOptionFlags.None,
             0);
+    }
+
+    /// <summary>
+    /// Binds the sampler pair consumed by GainMap.hlsl: s0 is the mip-trilinear
+    /// sampler used by every filter mode, s1 is the point sampler used by the
+    /// Nearest filter.
+    /// </summary>
+    private void BindZoomFilterSamplers()
+    {
+        if (_context is null || _linearClampSampler is null || _pointClampSampler is null)
+        {
+            return;
+        }
+
+        _context.PSSetSampler(0, _linearClampSampler);
+        _context.PSSetSampler(1, _pointClampSampler);
     }
 
     private static byte[] LoadEmbeddedShaderBytecode(string resourceName)
@@ -1315,6 +1380,7 @@ public sealed partial class D3D11HdrRenderPipeline : IHdrRenderPipeline, IDispos
             || _gainMapVertexShader is null
             || _gainMapPixelShader is null
             || _linearClampSampler is null
+            || _pointClampSampler is null
             || _gainMapConstantsBuffer is null
             || _primaryTextureView is null
             || _gainMapTextureView is null)
@@ -1325,7 +1391,8 @@ public sealed partial class D3D11HdrRenderPipeline : IHdrRenderPipeline, IDispos
                 ("render target", _renderTargetView is null),
                 ("vertex shader", _gainMapVertexShader is null),
                 ("gain-map pixel shader", _gainMapPixelShader is null),
-                ("sampler", _linearClampSampler is null),
+                ("linear sampler", _linearClampSampler is null),
+                ("point sampler", _pointClampSampler is null),
                 ("constant buffer", _gainMapConstantsBuffer is null),
                 ("primary texture view", _primaryTextureView is null),
                 ("gain-map texture view", _gainMapTextureView is null))}";
@@ -1343,7 +1410,7 @@ public sealed partial class D3D11HdrRenderPipeline : IHdrRenderPipeline, IDispos
         _context.VSSetShader(_gainMapVertexShader);
         _context.PSSetShader(_gainMapPixelShader);
         _context.PSSetShaderResources(0, [_primaryTextureView, _gainMapTextureView]);
-        _context.PSSetSampler(0, _linearClampSampler);
+        BindZoomFilterSamplers();
         _context.PSSetConstantBuffer(0, _gainMapConstantsBuffer);
         DrawWithViewerTools();
 
@@ -1796,12 +1863,30 @@ public sealed partial class D3D11HdrRenderPipeline : IHdrRenderPipeline, IDispos
             return;
         }
 
+        if (!DrawBaseImageShader(out var frameAnalysisSummary))
+        {
+            return;
+        }
+
+        var d2dFallback = string.IsNullOrWhiteSpace(_d2dFallbackStatus) ? string.Empty : $"{_d2dFallbackStatus}; ";
+        LastRenderStatus = $"{d2dFallback}Base image shader presented at {_pixelWidth}x{_pixelHeight}; {BuildLayoutSummary()}; decoder {_baseEncodingSummary}; {BuildBaseImageMappingSummary()}; {frameAnalysisSummary}; {BuildOutputSummary()}";
+    }
+
+    /// <summary>
+    /// Draws the loaded primary texture with the base-image shader and presents
+    /// it. Shared by normal document content and by SDR override content (e.g.
+    /// an RTX VSR result) so both use the same zoom interpolation path.
+    /// </summary>
+    private bool DrawBaseImageShader(out string frameAnalysisSummary)
+    {
+        frameAnalysisSummary = string.Empty;
         if (_context is null
             || _swapChain is null
             || _renderTargetView is null
             || _gainMapVertexShader is null
             || _baseImagePixelShader is null
             || _linearClampSampler is null
+            || _pointClampSampler is null
             || _gainMapConstantsBuffer is null
             || _primaryTextureView is null)
         {
@@ -1811,10 +1896,11 @@ public sealed partial class D3D11HdrRenderPipeline : IHdrRenderPipeline, IDispos
                 ("render target", _renderTargetView is null),
                 ("vertex shader", _gainMapVertexShader is null),
                 ("base pixel shader", _baseImagePixelShader is null),
-                ("sampler", _linearClampSampler is null),
+                ("linear sampler", _linearClampSampler is null),
+                ("point sampler", _pointClampSampler is null),
                 ("constant buffer", _gainMapConstantsBuffer is null),
                 ("primary texture view", _primaryTextureView is null))}";
-            return;
+            return false;
         }
 
         _context.OMSetBlendState(null);
@@ -1828,16 +1914,73 @@ public sealed partial class D3D11HdrRenderPipeline : IHdrRenderPipeline, IDispos
         _context.VSSetShader(_gainMapVertexShader);
         _context.PSSetShader(_baseImagePixelShader);
         _context.PSSetShaderResource(0, _primaryTextureView);
-        _context.PSSetSampler(0, _linearClampSampler);
+        BindZoomFilterSamplers();
         _context.PSSetConstantBuffer(0, _gainMapConstantsBuffer);
         DrawWithViewerTools();
 
         var frameAnalysis = AnalyzeBackBufferIfPending();
+        frameAnalysisSummary = frameAnalysis.Summary;
         LastFrameHasVisiblePixels = frameAnalysis.HasVisiblePixels;
         _context.PSUnsetShaderResources(0, 1);
         _swapChain.Present(1, PresentFlags.None).CheckError();
-        var d2dFallback = string.IsNullOrWhiteSpace(_d2dFallbackStatus) ? string.Empty : $"{_d2dFallbackStatus}; ";
-        LastRenderStatus = $"{d2dFallback}Base image shader presented at {_pixelWidth}x{_pixelHeight}; {BuildLayoutSummary()}; decoder {_baseEncodingSummary}; {BuildBaseImageMappingSummary()}; {frameAnalysis.Summary}; {BuildOutputSummary()}";
+        return true;
+    }
+
+    /// <summary>
+    /// Replaces the presented document content with caller-supplied SDR pixels
+    /// (used by the RTX VSR feature). The zoom/viewer state is owned by the
+    /// page and is deliberately not touched here; this only swaps the texture
+    /// content that the existing shader path samples.
+    /// </summary>
+    public async Task LoadSdrOverrideAsync(DecodedBitmap bitmap, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(bitmap);
+        await _renderOperationGate.WaitAsync(cancellationToken);
+        try
+        {
+            try
+            {
+                ExecuteLoadSdrOverride(bitmap);
+            }
+            catch (SharpGenException ex) when (!_isDisposed && IsDeviceLost(ex))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                RecoverFromDeviceLost(_pixelWidth, _pixelHeight);
+                ExecuteLoadSdrOverride(bitmap);
+            }
+        }
+        finally
+        {
+            _renderOperationGate.Release();
+        }
+    }
+
+    private void ExecuteLoadSdrOverride(DecodedBitmap bitmap)
+    {
+        EnsureDevice();
+        if (_device is null || _context is null || _swapChain is null)
+        {
+            LastRenderStatus = "SDR override skipped: device or swap chain missing";
+            return;
+        }
+
+        _document = null;
+        _sdrOverrideActive = false;
+        LoadBaseImageTexture(bitmap);
+        _sdrOverrideActive = true;
+        EnsureRenderTargetView();
+        RenderSdrOverride();
+    }
+
+    private void RenderSdrOverride()
+    {
+        EnsureRenderTargetView();
+        if (!DrawBaseImageShader(out var frameAnalysisSummary))
+        {
+            return;
+        }
+
+        LastRenderStatus = $"SDR override content presented at {_pixelWidth}x{_pixelHeight}; {BuildLayoutSummary()}; decoder {_baseEncodingSummary}; {frameAnalysisSummary}; {BuildOutputSummary()}";
     }
 
     private void ReleaseD2DBaseImageResources()

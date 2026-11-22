@@ -1,8 +1,10 @@
-﻿# 第三方组件说明
+# 第三方组件说明
 
 本文档用于说明 HDR Image Viewer 使用或可选调用的第三方组件。项目自身源码采用 GPLv3 或后续版本授权，见 `LICENSE`。第三方组件仍按各自许可证授权。
 
 需要区分两种情况：用户自行安装的外部命令行工具由本应用通过子进程调用时，本项目没有重新分发这些第三方二进制；如果发布包主动携带这些 exe/dll，才需要按被携带组件的许可证处理二进制再分发、通知和源代码提供等义务。专利、商用授权和平台政策风险是另一类问题，应与开源许可证合规分开评估。
+
+从 1.2.0 起，正式发布包（MSIX 与 portable zip）随包携带 `encoders\x64\`（固定版本的 JPEG XL / AVIF / HEIF / Ultra HDR 工具与运行时 DLL）以及原生 OpenEXR 桥 `HdrImageViewer.Native.dll` 及其依赖。这些二进制的来源、版本和 SHA256 固定在 `eng/codecs.lock.json`，许可证文本随包放在 `encoders\x64\licenses\`（以及 OpenEXR 组件的许可证文件），可用 `eng\verify-codecs.ps1` 复核。NVIDIA RTX VSR 运行库因 NVIDIA 自身许可限制不随包分发。
 
 本文档不是法律意见。
 

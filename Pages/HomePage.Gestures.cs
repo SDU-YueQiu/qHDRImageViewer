@@ -57,7 +57,8 @@ public sealed partial class HomePage
         var fit = ViewerViewportMath.CalculateFitSize(PreviewSurface.ActualWidth, PreviewSurface.ActualHeight,
             ImageSurface.Width / ImageSurface.Height);
         _zoomScale = _targetZoomScale = _committedZoomScale = ImageSurface.Width * NativeZoomFactor / fit.Width;
-        _isFitZoom = _isFillZoom = _zoomTargetFit = _zoomTargetFill = false;
+        _isFitZoom = _isFillZoom = _isActualSizeZoom = false;
+        _zoomTargetFit = _zoomTargetFill = _zoomTargetActualSize = false;
     }
 
     private void CommitNativeZoom()
@@ -68,9 +69,9 @@ public sealed partial class HomePage
 
         var width = ImageSurface.Width * factor;
         var height = ImageSurface.Height * factor;
-        var x = ViewerViewportMath.CalculateNativeZoomCommitOffset(ImageSurface.Width, ImageViewport.Width,
+        var x = CalculateNativeZoomCommitOffset(ImageSurface.Width, ImageViewport.Width,
             PreviewSurface.ActualWidth, factor, ImageScroller.HorizontalOffset);
-        var y = ViewerViewportMath.CalculateNativeZoomCommitOffset(ImageSurface.Height, ImageViewport.Height,
+        var y = CalculateNativeZoomCommitOffset(ImageSurface.Height, ImageViewport.Height,
             PreviewSurface.ActualHeight, factor, ImageScroller.VerticalOffset);
         UpdateNativeZoomScale();
         _resettingNativeZoom = true;
@@ -78,6 +79,18 @@ public sealed partial class HomePage
         ApplyImageSurfaceSize(width, height);
         ImageScroller.ChangeView(x, y, 1.0f, disableAnimation: true);
         UpdateZoomControls();
+    }
+
+    private static double CalculateNativeZoomCommitOffset(
+        double imageSize, double contentSize, double viewportSize, double factor, double offset)
+    {
+        // An image that stays smaller than the viewport keeps its drag slack
+        // after the commit, so the letterbox-removal math (which assumes a
+        // max(viewport, image) extent) no longer applies: center it in the new
+        // slack extent instead.
+        return imageSize * factor <= viewportSize + 0.5
+            ? ViewerViewportMath.CalculateContainedImageCenterOffset(imageSize * factor, viewportSize)
+            : ViewerViewportMath.CalculateNativeZoomCommitOffset(imageSize, contentSize, viewportSize, factor, offset);
     }
 
     private void ResetNativeZoom()
@@ -97,8 +110,8 @@ public sealed partial class HomePage
         var baseScale = ImageSurface.Width / fit.Width;
         var actualSizeScale = CalculateActualSizeZoomScale();
         // ScrollViewer supports 0.1..10 per gesture; rebasing at completion
-        // still allows the viewer's full 1%..800% range across gestures.
+        // still allows the viewer's full 1 %..MaxZoomPercent range across gestures.
         ImageScroller.MinZoomFactor = (float)Math.Clamp(actualSizeScale * 0.01 / baseScale, 0.1, 1.0);
-        ImageScroller.MaxZoomFactor = (float)Math.Clamp(actualSizeScale * 8.0 / baseScale, 1.0, 10.0);
+        ImageScroller.MaxZoomFactor = (float)Math.Clamp(actualSizeScale * MaximumZoomScale / baseScale, 1.0, 10.0);
     }
 }

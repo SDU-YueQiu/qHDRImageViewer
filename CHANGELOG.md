@@ -1,5 +1,53 @@
 # Changelog
 
+## 1.2.3.0 - 2026-11-22
+
+- Added a dedicated set of minification (zoom < 100 %) filters instead of reusing the magnification list: 自动（mip 三线性）、面积平均（Box，能量守恒、无振铃）、双线性、Catmull-Rom、Mitchell-Netravali（抗振铃）、Robidoux（缩图专用 Keys 三次）、Lanczos-2、Kaiser-2（窗函数 sinc，β=3.5）、最近邻。The pixel shader selects the downscale filter while the image is minified, samples the taps from a prefiltered mip level (footprint-aware LOD) and applies the existing 2×2 anti-ringing clamp to the negative-lobe kernels. Auto keeps the previous rendering byte-identically.
+- The settings page shows the dedicated downscale list in "缩小插值（<100%）"; `ZoomDownscaleMode` is now its own persisted enum. Settings from 1.2.2 (`ZoomInterpolationDownscale`) and from 1.2.1-era files (single `ZoomInterpolation`) migrate into the new mode by name and the legacy keys disappear on save.
+- Documented the research and trade-offs in `docs/DOWNSCALING_FILTERS.md` (why minification needs prefiltering, kernel formulas and constants, mip/LOD approach, measured quality ordering: Area least aliasing/ringing, Mitchell/Robidoux balanced, Lanczos/Kaiser/Catmull-Rom sharpest but with more lobes; gamma-correct mip chain).
+- Unit suite now 598 passed / 1 skipped (+80 tests for the new enum, migration, kernel weights and shader constants); app builds with 0 warnings.
+
+## 1.2.2.0 - 2026-11-22
+
+- Repurposed the RTX VSR setting: it now controls whether the image right-click menu offers "RTX VSR 超分" (default on, new `RtxVsrMenuEnabled`); it no longer applies VSR to every opened image automatically. Turning it off while VSR is active restores the original rendition. The previous `RtxVsrEnabled` value is ignored so the menu is visible after upgrading.
+- Simplified the RTX VSR right-click entry: the checkable toggle and the "显示原图" item are gone. The single item is a plain action whose label switches between "RTX VSR 超分" and "关闭 RTX VSR 超分", and enabling/disabling VSR now keeps the zoom percentage, image position and scroll offsets exactly as they were, so toggling gives a same-place A/B comparison (the status bar still reports the enhanced pixel dimensions).
+- Split the zoom interpolation setting into two independent preferences: "放大插值（>100%）" for magnification and "缩小插值（<100%）" for minification, each with Auto / Nearest / Bilinear / Bicubic / Lanczos. The pixel shader picks the filter per direction; Auto keeps the previous rendering byte-for-byte. Old settings files with a single `ZoomInterpolation` value migrate into both directions, and the legacy key disappears on the next save.
+- Left/Right arrows (and Home/End) now always switch to the previous/next image in the folder. Previously, when the filmstrip had keyboard focus, the ListView consumed the arrows and only moved its selection; a window-level handled-events fallback and a non-focusable filmstrip make image navigation win.
+- Updated localization in all 12 languages for the new VSR/interpolation settings; unit suite is 518 passed / 1 skipped and all projects build with 0 warnings.
+
+## 1.2.1.0 - 2026-11-22
+
+- Fixed HDR JPEG XL rendering. The probe now reads the original ICC profile and detects PQ/HLG instead of reporting "linear sRGB", the native decoder subscribes to the color-encoding event and pins the output encoding for ICC-based HDR images, the wrong `JXL_TYPE_FLOAT16` constant (4 instead of 5) that made every scene-linear JXL native decode fail was corrected, and Brotli-wrapped (`brob`) `jhgm` gain-map boxes plus bundles with a packed alternate color encoding are now read correctly. The `djxl` fallback for PQ/HLG also requests the matching output color space. HDR JPEG XL now matches the `djxl` reference pixel-for-pixel (structured PQ/HLG and linear float exactly; ICC-based within 1 u16 unit) and renders with correct nits instead of near-black. The directory metadata cache version was bumped so old "linear sRGB" probes are not reused.
+- Fixed the default view of images smaller than the window: fit mode no longer upscales past 100 %, so small images open at native size, centred (a 400×300 PNG now opens at 100 % instead of 275 %). The D3D swap-chain overlay follows the image position for HDR/EXR/JXL content.
+- Images smaller than the viewport can now be dragged/panned in any direction (all formats), with bounded slack so the image always stays visible; large-image panning, wheel zoom anchors, actual-size mode, resize/DPI behavior and VSR framing are preserved. Added viewport math unit tests.
+- The "floating toolbar auto-hide" setting is now authoritative for the title-bar toolbar too: setting 0 ms ("never hide") keeps the top toolbar permanently visible; the default 2200 ms still hides it while viewing.
+- The RTX VSR badge moved from the left edge of the title bar into the primary command row, inline with the other viewer tools. Applying VSR now shows a processing toast and, on success, an informational toast that explains how to compare the result; the badge/status bar append "显示原图" while the original rendition is shown, and the badge tooltip names the exact mode/tier plus the comparison hint.
+- Updated documentation and localization (12 languages) for the new VSR feedback strings; unit suite is 511 passed / 1 skipped and all app/test projects build with 0 warnings.
+
+## 1.2.0.0 - 2026-11-22
+
+- Fixed the settings page: every integer-backed dropdown (zoom interpolation, wheel behavior, HDR view mode, color gamut mapping, HDR headroom source, theme, VSR scale) always displayed its first option, so it looked like the value reverted to the default on every visit even though the correct value had been saved. The selection is now restored properly and round-trips across restarts.
+- Fixed the settings page focus handling: Enter in the search box activates the result and moves focus into the revealed card, clicking outside an input (or the search-results overlay) commits the edit and returns focus to the page, Escape clears/dismisses search, and Enter/Escape in number/text inputs commit and exit the editor.
+- Moved RTX VSR from the top toolbar into the image right-click menu with two entries, "RTX VSR 超分" and "显示原图" (show original). The top toolbar is hidden by default while viewing an image and revealed Windows Photos-style when the pointer reaches the top edge; the RTX VSR badge is a read-only accent pill inside that toolbar and is visible only while enhancement is active.
+- Show-original compares the enhanced and original renditions without reloading the neural model and without changing the zoom mode/scale; toggling back is instant.
+- Reworked the RTX VSR settings from a raw level number to the correct four NVIDIA VFX 1.3 mode families (Standard, Denoise, Deblur, High-bitrate) plus the Low/Medium/High/Ultra quality tier (native levels 1-4, 8-11, 12-15, 16-19). Denoise and Deblur run at the source resolution; Standard and High-bitrate upscale 2x/4x. The default (High-bitrate + Ultra) preserves the previous photo-oriented behavior.
+- Bundled the complete pinned codec runtime in the MSIX and portable builds: JPEG XL (libjxl in-process + `cjxl`/`djxl`), AVIF/HEIC (`avifenc`, `heif-enc`), Ultra HDR (`ultrahdr_app`) and the native OpenEXR bridge (`HdrImageViewer.Native.dll`) with its DLL closure. JPEG XL and OpenEXR now decode without installing MSYS2 or any external tools, and the optional encode/export paths have their command-line tools locally.
+- Updated documentation and localization in all 12 languages for the new VSR modes/context-menu entries and the codec bundle.
+
+## 1.1.1.0 - 2026-11-22
+
+- Renamed the product and all user-facing artifacts to **qHdrImageViewer**: project/solution files, assembly and executable (`qHdrImageViewer.exe/.dll/.pri`), MSIX identity (`LinYuSen.qHdrImageViewer`), Start menu/display names, window title, About page, installer/certificate/zip file names, and the `%LOCALAPPDATA%\qHdrImageViewer` data folder. Existing settings from the previous `%LOCALAPPDATA%\HdrImageViewer` folder are migrated on first launch; the old package can be uninstalled separately.
+- Internal implementation names (C# namespaces `HdrImageViewer.*`, test project names, the native OpenEXR bridge `HdrImageViewer.Native`) are intentionally unchanged so the rename does not touch code, resource and build identities.
+
+## 1.1.0.0 - 2026-11-22
+
+- Reworked the settings experience into an ImageGlass-style navigation page: 7 sections (General, Viewer, HDR & Color, Performance, Tools & Export, Appearance & Language, Advanced), a declarative settings registry, Ctrl+K cross-page search with breadcrumbs, per-setting reset, page reset, JSON import/export, restore-all-defaults, configuration folder shortcuts and a diagnostics panel. 38 settings are now exposed, including zoom/interaction tuning, HDR headroom and SDR white persistence, cache budgets, export safeguards and an Experimental section.
+- Added a zoom interpolation setting (Auto / Nearest / Bilinear / Bicubic / Lanczos) that changes the real GPU sampling filter; Auto keeps the previous adaptive Catmull-Rom + grid-sharpening path so the default rendering is unchanged.
+- The viewer zoom button left of the percentage now toggles between fit-to-window and 100 % actual size like Windows Photos, with a state-dependent icon/tooltip; actual size is pinned to physical pixels across window resizes and DPI changes. Wheel and +/- zoom steps now match Windows Photos at 10 % per step.
+- Added optional RTX Video Super Resolution enhancement (NVIDIA RTX GPU + Video Effects runtime): one-time model load, 2x/4x SDR upscaling of the current image, independent from the zoom model, with quality presets, cached results, status badge and graceful fallback when the NVIDIA runtime is absent. NVIDIA runtime DLLs are discovered at runtime and are not bundled.
+- Added `eng/publish-release.ps1`: builds a signed sideload MSIX plus a portable zip, a self-signed signing certificate and an install script for simple local installation.
+- Updated localization in all 12 languages and added unit coverage for the zoom filter kernels, zoom step math and settings normalization.
+
 ## 1.0.46.0 - 2026-11-18
 
 - Added built-in Radiance HDR (RGBE/XYZE) decoding. JPEG XL now prefers in-process libjxl for probing, decoding and gain-map reconstruction, with command-line fallback. Updated the OpenEXR bridge and moved AVIF ISO gain-map decoding in-process.

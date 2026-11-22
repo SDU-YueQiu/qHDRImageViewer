@@ -1,164 +1,138 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
-<Page x:Class="HdrImageViewer.Pages.SettingsPage"
-      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-      xmlns:controls="using:CommunityToolkit.WinUI.Controls"
-      HorizontalContentAlignment="Stretch"
-      VerticalContentAlignment="Stretch">
-    <Grid>
-        <VisualStateManager.VisualStateGroups>
-            <VisualStateGroup>
-                <VisualState x:Name="Narrow">
-                    <VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="0" /></VisualState.StateTriggers>
-                    <VisualState.Setters><Setter Target="SettingsContent.Padding" Value="16,12,16,24" /></VisualState.Setters>
-                </VisualState>
-                <VisualState x:Name="Wide">
-                    <VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="720" /></VisualState.StateTriggers>
-                    <VisualState.Setters><Setter Target="SettingsContent.Padding" Value="32,12,32,32" /></VisualState.Setters>
-                </VisualState>
-            </VisualStateGroup>
-        </VisualStateManager.VisualStateGroups>
-        <ScrollViewer AutomationProperties.AutomationId="SettingsScrollViewer" HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch">
-            <StackPanel x:Name="SettingsContent" HorizontalAlignment="Stretch" Spacing="24" Padding="32,12,32,32">
-                <TextBlock x:Uid="SettingsPageTitle" Style="{StaticResource TitleTextBlockStyle}" />
-            <StackPanel Spacing="8">
-                <TextBlock x:Name="PersonalizationHeading" Style="{StaticResource BodyStrongTextBlockStyle}" Margin="0,0,0,4" />
-                <controls:SettingsCard x:Name="ThemeCard" x:Uid="SettingsThemeSelector" Padding="16,12" MinHeight="72">
-                    <controls:SettingsCard.HeaderIcon><FontIcon Glyph="&#xE790;" /></controls:SettingsCard.HeaderIcon>
-                    <ComboBox MinWidth="160" MaxWidth="240"
-                        x:Name="ThemeSelector"
-                        AutomationProperties.AutomationId="ThemeSelector"
-                        HorizontalAlignment="Right"
-                        SelectionChanged="ThemeSelector_SelectionChanged">
-                        <ComboBoxItem x:Name="ThemeSystemItem" />
-                        <ComboBoxItem x:Name="ThemeLightItem" />
-                        <ComboBoxItem x:Name="ThemeDarkItem" />
-                    </ComboBox>
-                </controls:SettingsCard>
-                <controls:SettingsCard x:Name="LanguageCard" x:Uid="SettingsLanguageSelector" Padding="16,12" MinHeight="72">
-                    <controls:SettingsCard.HeaderIcon><FontIcon Glyph="&#xE774;" /></controls:SettingsCard.HeaderIcon>
-                    <ComboBox MinWidth="160" MaxWidth="240"
-                        x:Name="LanguageSelector"
-                        AutomationProperties.AutomationId="LanguageSelector"
-                        HorizontalAlignment="Right"
-                        SelectionChanged="LanguageSelector_SelectionChanged">
-                        <ComboBoxItem x:Name="LanguageSystemItem" Tag="" />
-                        <ComboBoxItem Content="中文（简体）" Tag="zh-CN" />
-                        <ComboBoxItem Content="English" Tag="en-US" />
-                        <ComboBoxItem Content="Русский" Tag="ru-RU" />
-                        <ComboBoxItem Content="Deutsch" Tag="de-DE" />
-                        <ComboBoxItem Content="Français" Tag="fr-FR" />
-                        <ComboBoxItem Content="Español" Tag="es-ES" />
-                        <ComboBoxItem Content="Italiano" Tag="it-IT" />
-                        <ComboBoxItem Content="Português (Brasil)" Tag="pt-BR" />
-                        <ComboBoxItem Content="日本語" Tag="ja-JP" />
-                        <ComboBoxItem Content="한국어" Tag="ko-KR" />
-                        <ComboBoxItem Content="Polski" Tag="pl-PL" />
-                        <ComboBoxItem Content="Українська" Tag="uk-UA" />
-                    </ComboBox>
-                </controls:SettingsCard>
-                <InfoBar
-                        x:Name="LanguageRestartInfoBar"
-                        IsOpen="False"
-                        Visibility="{x:Bind LanguageRestartInfoBar.IsOpen, Mode=OneWay}"
-                        IsClosable="True"
-                        Severity="Informational">
-                        <InfoBar.ActionButton>
-                            <Button
-                                x:Name="RestartNowButton"
-                                x:Uid="SettingsRestartNow"
-                                Click="RestartNowButton_Click" />
-                        </InfoBar.ActionButton>
-                    </InfoBar>
-            </StackPanel>
-            <StackPanel Spacing="8">
-                <TextBlock x:Name="InteractionHeading" Style="{StaticResource BodyStrongTextBlockStyle}" Margin="0,0,0,4" />
-                <controls:SettingsCard x:Name="WheelCard" x:Uid="SettingsMouseWheelBehaviorSelector" Padding="16,12" MinHeight="72">
-                    <controls:SettingsCard.HeaderIcon><FontIcon Glyph="&#xE962;" /></controls:SettingsCard.HeaderIcon>
-                    <ComboBox MinWidth="160" MaxWidth="240"
-                        x:Name="MouseWheelBehaviorSelector"
-                        AutomationProperties.AutomationId="MouseWheelBehaviorSelector"
-                        HorizontalAlignment="Right"
-                        SelectionChanged="MouseWheelBehaviorSelector_SelectionChanged">
-                        <ComboBoxItem x:Name="MouseWheelNavigateItem" />
-                        <ComboBoxItem x:Name="MouseWheelZoomItem" />
-                    </ComboBox>
-                </controls:SettingsCard>
-                <controls:SettingsCard x:Name="TouchCard" x:Uid="SettingsTouchpadGesturesToggle" Padding="16,12" MinHeight="72">
-                    <controls:SettingsCard.HeaderIcon><FontIcon Glyph="&#xE7C9;" /></controls:SettingsCard.HeaderIcon>
-                    <ToggleSwitch
-                        x:Name="TouchpadGesturesToggle"
-                        AutomationProperties.AutomationId="TouchpadGesturesToggle"
-                        Toggled="TouchpadGesturesToggle_Toggled" />
-                </controls:SettingsCard>
-            </StackPanel>
-            <StackPanel Spacing="8">
-                <TextBlock x:Name="ViewingHeading" Style="{StaticResource BodyStrongTextBlockStyle}" Margin="0,0,0,4" />
-                <controls:SettingsCard x:Name="InspectorCard" x:Uid="SettingsShowInspectorPanelToggle" Padding="16,12" MinHeight="72">
-                    <controls:SettingsCard.HeaderIcon><FontIcon Glyph="&#xE946;" /></controls:SettingsCard.HeaderIcon>
-                    <ToggleSwitch
-                        x:Name="ShowInspectorPanelToggle"
-                        AutomationProperties.AutomationId="ShowInspectorPanelToggle"
-                        Toggled="ShowInspectorPanelToggle_Toggled" />
-                </controls:SettingsCard>
-                <controls:SettingsCard x:Name="FilmstripCard" x:Uid="SettingsShowFilmstripToggle" Padding="16,12" MinHeight="72">
-                    <controls:SettingsCard.HeaderIcon><FontIcon Glyph="&#xE7AA;" /></controls:SettingsCard.HeaderIcon>
-                    <ToggleSwitch
-                        x:Name="ShowFilmstripToggle"
-                        AutomationProperties.AutomationId="ShowFilmstripToggle"
-                        Toggled="ShowFilmstripToggle_Toggled" />
-                </controls:SettingsCard>
-                <controls:SettingsCard x:Name="GamutCard" x:Uid="SettingsColorGamutMappingModeSelector" Padding="16,12" MinHeight="72">
-                    <controls:SettingsCard.HeaderIcon><FontIcon Glyph="&#xE790;" /></controls:SettingsCard.HeaderIcon>
-                    <ComboBox MinWidth="160" MaxWidth="240"
-                        x:Name="ColorGamutMappingModeSelector"
-                        AutomationProperties.AutomationId="ColorGamutMappingModeSelector"
-                        HorizontalAlignment="Right"
-                        SelectionChanged="ColorGamutMappingModeSelector_SelectionChanged">
-                        <ComboBoxItem x:Name="GamutManagedItem" />
-                        <ComboBoxItem x:Name="GamutClipItem" />
-                    </ComboBox>
-                </controls:SettingsCard>
-            </StackPanel>
-            <StackPanel Spacing="8">
-                <TextBlock x:Name="PerformanceHeading" Style="{StaticResource BodyStrongTextBlockStyle}" Margin="0,0,0,4" />
-                <controls:SettingsCard x:Name="PreloadCard" x:Uid="SettingsPreloadAdjacentImagesToggle" Padding="16,12" MinHeight="72">
-                    <controls:SettingsCard.HeaderIcon><FontIcon Glyph="&#xE945;" /></controls:SettingsCard.HeaderIcon>
-                    <ToggleSwitch
-                        x:Name="PreloadAdjacentImagesToggle"
-                        AutomationProperties.AutomationId="PreloadAdjacentImagesToggle"
-                        Toggled="PreloadAdjacentImagesToggle_Toggled" />
-                </controls:SettingsCard>
-                <controls:SettingsCard x:Name="RadiusCard" x:Uid="SettingsAdjacentPreloadRadiusBox" Padding="16,12" MinHeight="72">
-                    <controls:SettingsCard.HeaderIcon><FontIcon Glyph="&#xE8F1;" /></controls:SettingsCard.HeaderIcon>
-                    <NumberBox Width="160"
-                        x:Name="AdjacentPreloadRadiusBox"
-                        AutomationProperties.AutomationId="AdjacentPreloadRadiusBox"
-                        Minimum="1"
-                        Maximum="12"
-                        SmallChange="1"
-                        LargeChange="2"
-                        SpinButtonPlacementMode="Inline"
-                        ValueChanged="AdjacentPreloadRadiusBox_ValueChanged" />
-                </controls:SettingsCard>
-                <controls:SettingsCard x:Name="CloudPlaceholderCard" x:Uid="SettingsSkipCloudPlaceholdersToggle" Padding="16,12" MinHeight="72">
-                    <controls:SettingsCard.HeaderIcon><FontIcon Glyph="&#xE753;" /></controls:SettingsCard.HeaderIcon>
-                    <ToggleSwitch
-                        x:Name="SkipCloudPlaceholdersToggle"
-                        AutomationProperties.AutomationId="SkipCloudPlaceholdersToggle"
-                        Toggled="SkipCloudPlaceholdersToggle_Toggled" />
-                </controls:SettingsCard>
-            </StackPanel>
-            <StackPanel Spacing="8">
-                <TextBlock x:Name="SystemHeading" Style="{StaticResource BodyStrongTextBlockStyle}" Margin="0,0,0,4" />
-                <controls:SettingsCard x:Name="DefaultAppsCard" Padding="16,12" MinHeight="72">
-                    <controls:SettingsCard.HeaderIcon><FontIcon Glyph="&#xE8A7;" /></controls:SettingsCard.HeaderIcon>
-                    <Button x:Name="OpenDefaultAppsSettingsButton" x:Uid="SettingsOpenDefaultAppsButton" AutomationProperties.AutomationId="OpenDefaultAppsSettingsButton" Click="OpenDefaultAppsSettings_Click">
-                        <StackPanel Orientation="Horizontal" Spacing="8"><TextBlock x:Uid="SettingsDefaultAppsText" /><FontIcon FontSize="12" Glyph="&#xE8A7;" /></StackPanel>
-                    </Button>
-                </controls:SettingsCard>
-            </StackPanel>
-            </StackPanel>
-        </ScrollViewer>
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="HdrImageViewer.Pages.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    AutomationProperties.AutomationId="SettingsPage"
+    Background="Transparent"
+    HorizontalContentAlignment="Stretch"
+    IsTabStop="True"
+    PointerPressed="SettingsPage_PointerPressed"
+    PointerReleased="SettingsPage_PointerReleased"
+    UseSystemFocusVisuals="False"
+    VerticalContentAlignment="Stretch">
+
+    <Page.Resources>
+        <Style x:Key="SettingsPageTitleStyle" TargetType="TextBlock" BasedOn="{StaticResource TitleTextBlockStyle}" />
+        <Style x:Key="SettingsGroupHeaderStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyStrongTextBlockStyle}" />
+    </Page.Resources>
+
+    <Page.KeyboardAccelerators>
+        <KeyboardAccelerator Key="K" Modifiers="Control" Invoked="FocusSearchAccelerator_Invoked" />
+    </Page.KeyboardAccelerators>
+
+    <Grid Background="Transparent">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid Padding="32,16,32,4" ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" MaxWidth="420" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <FontIcon
+                Glyph="&#xE721;"
+                FontSize="16"
+                VerticalAlignment="Center" />
+            <TextBox
+                x:Name="SearchBox"
+                Grid.Column="1"
+                AutomationProperties.AutomationId="SettingsSearchBox"
+                HorizontalAlignment="Stretch"
+                TextChanged="SearchBox_TextChanged"
+                KeyDown="SearchBox_KeyDown" />
+            <TextBlock
+                x:Name="SearchHintText"
+                Grid.Column="2"
+                VerticalAlignment="Center"
+                Opacity="0.6" />
+        </Grid>
+
+        <Grid Grid.Row="1">
+            <NavigationView
+                x:Name="SettingsNavigation"
+                AutomationProperties.AutomationId="SettingsNavigationView"
+                PaneDisplayMode="Left"
+                OpenPaneLength="208"
+                IsSettingsVisible="False"
+                IsBackButtonVisible="Collapsed"
+                IsPaneToggleButtonVisible="False"
+                HorizontalContentAlignment="Stretch"
+                VerticalContentAlignment="Stretch"
+                SelectionChanged="SettingsNavigation_SelectionChanged">
+                <NavigationView.Content>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <InfoBar
+                            x:Name="SettingsInfoBar"
+                            Grid.Row="0"
+                            Margin="32,12,32,0"
+                            AutomationProperties.AutomationId="SettingsInfoBar"
+                            IsOpen="False"
+                            IsClosable="True"
+                            Visibility="{x:Bind SettingsInfoBar.IsOpen, Mode=OneWay}">
+                            <InfoBar.ActionButton>
+                                <Button
+                                    x:Name="RestartNowButton"
+                                    AutomationProperties.AutomationId="SettingsRestartNowButton"
+                                    Click="RestartNowButton_Click" />
+                            </InfoBar.ActionButton>
+                        </InfoBar>
+                        <ScrollViewer
+                            x:Name="ContentScroller"
+                            Grid.Row="1"
+                            AutomationProperties.AutomationId="SettingsContentScrollViewer"
+                            HorizontalScrollMode="Disabled"
+                            HorizontalScrollBarVisibility="Disabled"
+                            HorizontalContentAlignment="Stretch"
+                            VerticalScrollBarVisibility="Auto">
+                            <StackPanel
+                                x:Name="PageContentHost"
+                                Padding="32,8,32,32"
+                                Spacing="8"
+                                HorizontalAlignment="Stretch" />
+                        </ScrollViewer>
+                    </Grid>
+                </NavigationView.Content>
+            </NavigationView>
+
+            <Border
+                x:Name="SearchResultsOverlay"
+                Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+                Visibility="Collapsed"
+                Padding="32,8,32,16">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <TextBlock
+                        x:Name="SearchResultsHeading"
+                        AutomationProperties.AutomationId="SettingsSearchResultsHeading"
+                        Margin="0,0,0,8"
+                        Style="{StaticResource BodyStrongTextBlockStyle}" />
+                    <ListView
+                        x:Name="SearchResultsList"
+                        Grid.Row="1"
+                        AutomationProperties.AutomationId="SettingsSearchResultsList"
+                        SelectionMode="None"
+                        IsItemClickEnabled="True"
+                        ItemClick="SearchResultsList_ItemClick">
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                <Setter Property="Padding" Value="12,8" />
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                    </ListView>
+                </Grid>
+            </Border>
+        </Grid>
     </Grid>
 </Page>

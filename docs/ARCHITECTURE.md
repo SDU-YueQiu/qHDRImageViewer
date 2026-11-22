@@ -1,6 +1,6 @@
 # Architecture
 
-HDR Image Viewer is a WinUI 3 photo viewer with a custom Direct3D 11 HDR renderer. The shell handles normal viewer UX, while decode, metadata probing, HDR reconstruction, tone mapping, and presentation stay in services/rendering code.
+qHdrImageViewer is a WinUI 3 HDR photo viewer (a GPLv3 personal fork of the original HDR Image Viewer project) with a custom Direct3D 11 HDR renderer. The shell handles normal viewer UX, while decode, metadata probing, HDR reconstruction, tone mapping, and presentation stay in services/rendering code.
 
 ## Project Layout
 
@@ -111,7 +111,7 @@ Live Photo support is layered on top of the existing still-image pipeline instea
 - Decoded preload cache is trimmed to 320 MB. Gen-2 collection and LOH compaction are requested only when `ImageMemoryPressureService` sees a large eviction plus high memory load.
 - The FP16 swap chain is sized to the visible preview viewport. Pan and zoom update shader `ImageLayout` and redraw; `ResizeBuffers` runs only when the physical viewport changes.
 - `FolderImageIndexCache` keeps a watcher-backed snapshot of each browsed directory so filmstrip/navigation does not re-enumerate on every image.
-- `DirectoryMetadataCache` keeps per-directory metadata in memory and flushes one JSON file per directory (named by a SHA-256 hash of the directory path) under `%LocalAppData%\HdrImageViewer\metadata-cache\` in debounced batches; legacy in-folder `.hdrimageviewer.meta.json` files are still read as a fallback.
+- `DirectoryMetadataCache` keeps per-directory metadata in memory and flushes one JSON file per directory (named by a SHA-256 hash of the directory path) under `%LocalAppData%\qHdrImageViewer\metadata-cache\` in debounced batches; legacy in-folder `.hdrimageviewer.meta.json` files are still read as a fallback.
 - LibHeifSharp HEIF/AVIF decode expands 10/12-bit samples to 16-bit in `Parallel.For` over rows and reports per-phase timings on the status line.
 - Thumbnail loading is cancellable, focus-ordered, and limited to a nearby window.
 - Filmstrip thumbnails are SDR. Gain-map thumbnails use the embedded SDR rendition with orientation and color conversion, without reapplying HDR gain. Single-layer HDR thumbnails use the viewer's SDR reference white (203 nits for PQ/HLG/scene-linear content; 80 nits for display-referred scRGB), followed by a shared-channel highlight shoulder. These conversions are separate from the SDR export conversion.

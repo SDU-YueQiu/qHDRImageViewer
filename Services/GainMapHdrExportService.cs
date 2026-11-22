@@ -158,7 +158,7 @@ public static class GainMapHdrExportService
         }
 
         Directory.CreateDirectory(Path.GetDirectoryName(outputPath) ?? Environment.CurrentDirectory);
-        var tempDir = Path.Combine(Path.GetTempPath(), "HdrImageViewer", "ultrahdr-" + Guid.NewGuid().ToString("N"));
+        var tempDir = Path.Combine(Path.GetTempPath(), "qHdrImageViewer", "ultrahdr-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tempDir);
         var rawPath = Path.Combine(tempDir, "hdr-rgba-f16.raw");
         var candidateExtension = extension == ".heif" ? ".heic" : extension;
@@ -239,7 +239,7 @@ public static class GainMapHdrExportService
         }
 
         Directory.CreateDirectory(Path.GetDirectoryName(outputPath) ?? Environment.CurrentDirectory);
-        var tempDir = Path.Combine(Path.GetTempPath(), "HdrImageViewer", "gainmap-preserve-" + Guid.NewGuid().ToString("N"));
+        var tempDir = Path.Combine(Path.GetTempPath(), "qHdrImageViewer", "gainmap-preserve-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tempDir);
         var basePath = Path.Combine(tempDir, "base-crop.jpg");
         var gainPath = Path.Combine(tempDir, "gain-crop.jpg");

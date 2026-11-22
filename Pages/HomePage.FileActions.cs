@@ -130,6 +130,7 @@ public sealed partial class HomePage
             SuggestedStartLocation = PickerLocationId.PicturesLibrary,
             SuggestedFileName = Path.GetFileNameWithoutExtension(document.FileName),
             DefaultFileExtension = extension,
+            ShowOverwritePrompt = _settings.ConfirmBeforeOverwrite,
         };
         picker.FileTypeChoices.Add(Localization.GetString("FileTypeOriginalFormat", document.Format.DisplayName), [extension]);
 

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
     <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
@@ -59,10 +59,10 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="AppTitle" xml:space="preserve">
-    <value>Visionneuse d'images HDR</value>
+    <value>qHdrImageViewer</value>
   </data>
   <data name="AppTitleBar.Title" xml:space="preserve">
-    <value>Visionneuse d'images HDR</value>
+    <value>qHdrImageViewer</value>
   </data>
   <data name="NavViewer" xml:space="preserve">
     <value>Visionneuse</value>
@@ -83,7 +83,7 @@
     <value>À propos</value>
   </data>
   <data name="AboutAppName.Text" xml:space="preserve">
-    <value>Visionneuse d'images HDR</value>
+    <value>qHdrImageViewer</value>
   </data>
   <data name="AboutVersionLoading" xml:space="preserve">
     <value>Version : Chargement...</value>
@@ -857,7 +857,7 @@
     <value>Live</value>
   </data>
   <data name="AppxManifestDisplayName" xml:space="preserve">
-    <value>Visionneuse d'images HDR</value>
+    <value>qHdrImageViewer</value>
   </data>
   <data name="AppxManifestDescription" xml:space="preserve">
     <value>Visionneuse d'images basée sur WinUI 3 et la surface de rendu DirectX HDR</value>
@@ -1376,5 +1376,638 @@ Sombres filtrés {3} · Sans coordonnées valides {4}</value>
   </data>
   <data name="HdrHeadroomAblSimulation" xml:space="preserve">
     <value>Simulation ABL</value>
+  </data>
+  <data name="SettingsPageGeneralTitle" xml:space="preserve">
+    <value>General</value>
+  </data>
+  <data name="SettingsPageViewerTitle" xml:space="preserve">
+    <value>Viewer</value>
+  </data>
+  <data name="SettingsPageHdrColorTitle" xml:space="preserve">
+    <value>HDR &amp; Color</value>
+  </data>
+  <data name="SettingsPagePerformanceTitle" xml:space="preserve">
+    <value>Performance</value>
+  </data>
+  <data name="SettingsPageToolsExportTitle" xml:space="preserve">
+    <value>Tools &amp; Export</value>
+  </data>
+  <data name="SettingsPageAppearanceTitle" xml:space="preserve">
+    <value>Appearance &amp; Language</value>
+  </data>
+  <data name="SettingsPageAdvancedTitle" xml:space="preserve">
+    <value>Advanced</value>
+  </data>
+  <data name="SettingsGroupStartupHeader" xml:space="preserve">
+    <value>Startup</value>
+  </data>
+  <data name="SettingsGroupSystemHeader" xml:space="preserve">
+    <value>Windows integration</value>
+  </data>
+  <data name="SettingsGroupZoomHeader" xml:space="preserve">
+    <value>Zoom</value>
+  </data>
+  <data name="SettingsGroupMouseHeader" xml:space="preserve">
+    <value>Mouse &amp; touch</value>
+  </data>
+  <data name="SettingsGroupOnScreenHeader" xml:space="preserve">
+    <value>On-screen elements</value>
+  </data>
+  <data name="SettingsGroupStatusBarHeader" xml:space="preserve">
+    <value>Status bar</value>
+  </data>
+  <data name="SettingsGroupHdrDisplayHeader" xml:space="preserve">
+    <value>HDR display</value>
+  </data>
+  <data name="SettingsGroupHeadroomHeader" xml:space="preserve">
+    <value>HDR headroom</value>
+  </data>
+  <data name="SettingsGroupAnalysisHeader" xml:space="preserve">
+    <value>Analysis</value>
+  </data>
+  <data name="SettingsGroupPreloadHeader" xml:space="preserve">
+    <value>Preloading</value>
+  </data>
+  <data name="SettingsGroupCacheHeader" xml:space="preserve">
+    <value>Caches</value>
+  </data>
+  <data name="SettingsGroupMemoryHeader" xml:space="preserve">
+    <value>Memory</value>
+  </data>
+  <data name="SettingsGroupExportHeader" xml:space="preserve">
+    <value>Export behavior</value>
+  </data>
+  <data name="SettingsGroupThemeHeader" xml:space="preserve">
+    <value>Theme &amp; language</value>
+  </data>
+  <data name="SettingsGroupConfigurationHeader" xml:space="preserve">
+    <value>Configuration</value>
+  </data>
+  <data name="SettingsGroupDiagnosticsHeader" xml:space="preserve">
+    <value>Diagnostics</value>
+  </data>
+  <data name="SettingsGroupDangerHeader" xml:space="preserve">
+    <value>Danger zone</value>
+  </data>
+  <data name="SettingsGroupExperimentalHeader" xml:space="preserve">
+    <value>Experimental features</value>
+  </data>
+  <data name="SettingsRestoreLastImageOnStartupLabel" xml:space="preserve">
+    <value>Restore last image on startup</value>
+  </data>
+  <data name="SettingsRestoreLastImageOnStartupDescription" xml:space="preserve">
+    <value>Reopen the last viewed image and folder when the app starts.</value>
+  </data>
+  <data name="SettingsOpenDefaultAppsLabel" xml:space="preserve">
+    <value>Default apps</value>
+  </data>
+  <data name="SettingsOpenDefaultAppsDescription" xml:space="preserve">
+    <value>Choose this app as the default image viewer in Windows Settings.</value>
+  </data>
+  <data name="SettingsOpenDefaultAppsAction" xml:space="preserve">
+    <value>Open settings</value>
+  </data>
+  <data name="SettingsZoomInterpolationUpscaleLabel" xml:space="preserve">
+    <value>Upscale interpolation (&gt;100%)</value>
+  </data>
+  <data name="SettingsZoomInterpolationUpscaleDescription" xml:space="preserve">
+    <value>Filter used when the image is displayed larger than its source pixels (zoom above 100%). Auto keeps the current adaptive sharpened path.</value>
+  </data>
+  <data name="SettingsZoomInterpolationDownscaleLabel" xml:space="preserve">
+    <value>Downscale filter (&lt;100%)</value>
+  </data>
+  <data name="SettingsZoomInterpolationDownscaleDescription" xml:space="preserve">
+    <value>Filter used when the image is displayed smaller than its source pixels (zoom below 100%). These are minification-specific filters: the mip chain prefilters the output footprint and the kernel restores sharpness or smoothness. Auto keeps the legacy mip-filtered path.</value>
+  </data>
+  <data name="SettingsInterpolationAuto" xml:space="preserve">
+    <value>Auto (default)</value>
+  </data>
+  <data name="SettingsInterpolationNearest" xml:space="preserve">
+    <value>Nearest neighbor</value>
+  </data>
+  <data name="SettingsInterpolationBilinear" xml:space="preserve">
+    <value>Bilinear</value>
+  </data>
+  <data name="SettingsInterpolationBicubic" xml:space="preserve">
+    <value>Bicubic (Catmull-Rom)</value>
+  </data>
+  <data name="SettingsInterpolationLanczos" xml:space="preserve">
+    <value>Lanczos (Lanczos-2)</value>
+  </data>
+  <data name="SettingsInterpolationArea" xml:space="preserve">
+    <value>Area (box average)</value>
+  </data>
+  <data name="SettingsInterpolationMitchell" xml:space="preserve">
+    <value>Mitchell (anti-ringing)</value>
+  </data>
+  <data name="SettingsInterpolationRobidoux" xml:space="preserve">
+    <value>Robidoux (downscale-tuned)</value>
+  </data>
+  <data name="SettingsInterpolationKaiser2" xml:space="preserve">
+    <value>Kaiser (windowed sinc)</value>
+  </data>
+  <data name="SettingsWheelZoomStepFactorLabel" xml:space="preserve">
+    <value>Wheel zoom step</value>
+  </data>
+  <data name="SettingsWheelZoomStepFactorDescription" xml:space="preserve">
+    <value>Zoom factor applied per mouse-wheel notch (1.02–1.5).</value>
+  </data>
+  <data name="SettingsUnitMultiplier" xml:space="preserve">
+    <value>x</value>
+  </data>
+  <data name="SettingsZoomAnimationDurationMillisecondsLabel" xml:space="preserve">
+    <value>Zoom animation duration</value>
+  </data>
+  <data name="SettingsZoomAnimationDurationMillisecondsDescription" xml:space="preserve">
+    <value>Duration of the zoom animation; 0 disables the animation.</value>
+  </data>
+  <data name="SettingsUnitMilliseconds" xml:space="preserve">
+    <value>ms</value>
+  </data>
+  <data name="SettingsMaxZoomPercentLabel" xml:space="preserve">
+    <value>Maximum zoom</value>
+  </data>
+  <data name="SettingsMaxZoomPercentDescription" xml:space="preserve">
+    <value>Largest zoom level the viewer allows.</value>
+  </data>
+  <data name="SettingsUnitPercent" xml:space="preserve">
+    <value>%</value>
+  </data>
+  <data name="SettingsOpenImageZoomModeLabel" xml:space="preserve">
+    <value>Zoom on open</value>
+  </data>
+  <data name="SettingsOpenImageZoomModeDescription" xml:space="preserve">
+    <value>Zoom level applied when a new image is opened.</value>
+  </data>
+  <data name="SettingsOpenZoomFit" xml:space="preserve">
+    <value>Fit to window</value>
+  </data>
+  <data name="SettingsOpenZoomActualSize" xml:space="preserve">
+    <value>Actual size (100%)</value>
+  </data>
+  <data name="SettingsOpenZoomLast" xml:space="preserve">
+    <value>Last used</value>
+  </data>
+  <data name="SettingsLimitWheelZoomOutToFitLabel" xml:space="preserve">
+    <value>Stop wheel zoom-out at fit</value>
+  </data>
+  <data name="SettingsLimitWheelZoomOutToFitDescription" xml:space="preserve">
+    <value>Do not let the mouse wheel zoom out below fit-to-window.</value>
+  </data>
+  <data name="SettingsMouseWheelBehaviorLabel" xml:space="preserve">
+    <value>Mouse wheel behavior</value>
+  </data>
+  <data name="SettingsMouseWheelBehaviorDescription" xml:space="preserve">
+    <value>Choose whether the wheel changes images or zooms. Hold Ctrl to always zoom.</value>
+  </data>
+  <data name="SettingsTouchpadGesturesEnabledLabel" xml:space="preserve">
+    <value>Touchpad and touch gestures</value>
+  </data>
+  <data name="SettingsTouchpadGesturesEnabledDescription" xml:space="preserve">
+    <value>Pinch to zoom on a touchpad or touchscreen.</value>
+  </data>
+  <data name="SettingsViewerChromeAutoHideMillisecondsLabel" xml:space="preserve">
+    <value>Auto-hide floating toolbar</value>
+  </data>
+  <data name="SettingsViewerChromeAutoHideMillisecondsDescription" xml:space="preserve">
+    <value>Delay before floating controls hide; 0 keeps them visible.</value>
+  </data>
+  <data name="SettingsShowInspectorPanelLabel" xml:space="preserve">
+    <value>Show inspector panel</value>
+  </data>
+  <data name="SettingsShowInspectorPanelDescription" xml:space="preserve">
+    <value>Show file details, HDR display controls and viewer tools.</value>
+  </data>
+  <data name="SettingsShowFilmstripLabel" xml:space="preserve">
+    <value>Show filmstrip</value>
+  </data>
+  <data name="SettingsShowFilmstripDescription" xml:space="preserve">
+    <value>Show thumbnails from the same folder below the image.</value>
+  </data>
+  <data name="SettingsShowStatusFileNameLabel" xml:space="preserve">
+    <value>Show file name in status bar</value>
+  </data>
+  <data name="SettingsShowStatusFileNameDescription" xml:space="preserve">
+    <value>Show the current file name in the status bar.</value>
+  </data>
+  <data name="SettingsShowStatusDimensionsLabel" xml:space="preserve">
+    <value>Show dimensions in status bar</value>
+  </data>
+  <data name="SettingsShowStatusDimensionsDescription" xml:space="preserve">
+    <value>Show the image resolution in the status bar.</value>
+  </data>
+  <data name="SettingsShowStatusFileSizeLabel" xml:space="preserve">
+    <value>Show file size in status bar</value>
+  </data>
+  <data name="SettingsShowStatusFileSizeDescription" xml:space="preserve">
+    <value>Show the file size in the status bar.</value>
+  </data>
+  <data name="SettingsShowStatusHdrKindLabel" xml:space="preserve">
+    <value>Show HDR type in status bar</value>
+  </data>
+  <data name="SettingsShowStatusHdrKindDescription" xml:space="preserve">
+    <value>Show the HDR format or gain-map type in the status bar.</value>
+  </data>
+  <data name="SettingsHdrViewModeLabel" xml:space="preserve">
+    <value>HDR display mode</value>
+  </data>
+  <data name="SettingsHdrViewModeDescription" xml:space="preserve">
+    <value>Default display path: SDR, adaptive, alternate image or gain map.</value>
+  </data>
+  <data name="SettingsColorGamutMappingModeLabel" xml:space="preserve">
+    <value>Color gamut mapping</value>
+  </data>
+  <data name="SettingsColorGamutMappingModeDescription" xml:space="preserve">
+    <value>Choose how image colors map to the display gamut.</value>
+  </data>
+  <data name="SettingsAdaptiveToneMappingEnabledLabel" xml:space="preserve">
+    <value>Adaptive tone mapping</value>
+  </data>
+  <data name="SettingsAdaptiveToneMappingEnabledDescription" xml:space="preserve">
+    <value>Adapt highlight compression to each image automatically.</value>
+  </data>
+  <data name="SettingsHdrHeadroomModeLabel" xml:space="preserve">
+    <value>HDR headroom source</value>
+  </data>
+  <data name="SettingsHdrHeadroomModeDescription" xml:space="preserve">
+    <value>Use the display's adaptive headroom or a manual value.</value>
+  </data>
+  <data name="SettingsHdrManualHeadroomStopsLabel" xml:space="preserve">
+    <value>Manual headroom</value>
+  </data>
+  <data name="SettingsHdrManualHeadroomStopsDescription" xml:space="preserve">
+    <value>Manual headroom in stops (-4 to +4).</value>
+  </data>
+  <data name="SettingsUnitStops" xml:space="preserve">
+    <value>stops</value>
+  </data>
+  <data name="SettingsSdrWhiteOverrideEnabledLabel" xml:space="preserve">
+    <value>Override SDR white point</value>
+  </data>
+  <data name="SettingsSdrWhiteOverrideEnabledDescription" xml:space="preserve">
+    <value>Use a custom SDR white level instead of the display-reported value.</value>
+  </data>
+  <data name="SettingsSdrWhiteNitsLabel" xml:space="preserve">
+    <value>Custom SDR white point</value>
+  </data>
+  <data name="SettingsSdrWhiteNitsDescription" xml:space="preserve">
+    <value>Custom SDR white level in nits (80–400).</value>
+  </data>
+  <data name="SettingsUnitNits" xml:space="preserve">
+    <value>nits</value>
+  </data>
+  <data name="SettingsAnalysisAutoRefreshEnabledLabel" xml:space="preserve">
+    <value>Auto-refresh analysis</value>
+  </data>
+  <data name="SettingsAnalysisAutoRefreshEnabledDescription" xml:space="preserve">
+    <value>Refresh the luminance analysis automatically after the image changes.</value>
+  </data>
+  <data name="SettingsPreloadAdjacentImagesLabel" xml:space="preserve">
+    <value>Preload adjacent images</value>
+  </data>
+  <data name="SettingsPreloadAdjacentImagesDescription" xml:space="preserve">
+    <value>Load nearby images in advance for faster navigation.</value>
+  </data>
+  <data name="SettingsAdjacentPreloadRadiusLabel" xml:space="preserve">
+    <value>Preload radius</value>
+  </data>
+  <data name="SettingsAdjacentPreloadRadiusDescription" xml:space="preserve">
+    <value>Number of images to preload in each direction.</value>
+  </data>
+  <data name="SettingsUnitImages" xml:space="preserve">
+    <value>images</value>
+  </data>
+  <data name="SettingsSkipCloudPlaceholdersLabel" xml:space="preserve">
+    <value>Skip cloud placeholders</value>
+  </data>
+  <data name="SettingsDecodedCacheBudgetMegabytesLabel" xml:space="preserve">
+    <value>Decoded cache budget</value>
+  </data>
+  <data name="SettingsDecodedCacheBudgetMegabytesDescription" xml:space="preserve">
+    <value>Memory budget for decoded pixel caches.</value>
+  </data>
+  <data name="SettingsUnitMegabytes" xml:space="preserve">
+    <value>MB</value>
+  </data>
+  <data name="SettingsMetadataCacheMaxFilesLabel" xml:space="preserve">
+    <value>Metadata cache files</value>
+  </data>
+  <data name="SettingsMetadataCacheMaxFilesDescription" xml:space="preserve">
+    <value>Maximum number of files kept in the on-disk metadata cache.</value>
+  </data>
+  <data name="SettingsUnitFiles" xml:space="preserve">
+    <value>files</value>
+  </data>
+  <data name="SettingsDirectoryIndexCacheCountLabel" xml:space="preserve">
+    <value>Directory index caches</value>
+  </data>
+  <data name="SettingsDirectoryIndexCacheCountDescription" xml:space="preserve">
+    <value>Number of folder index caches kept in memory.</value>
+  </data>
+  <data name="SettingsUnitFolders" xml:space="preserve">
+    <value>folders</value>
+  </data>
+  <data name="SettingsMemoryPressureAutoTrimLabel" xml:space="preserve">
+    <value>Automatic memory trimming</value>
+  </data>
+  <data name="SettingsMemoryPressureAutoTrimDescription" xml:space="preserve">
+    <value>Release caches automatically when memory is low.</value>
+  </data>
+  <data name="SettingsConfirmBeforeOverwriteLabel" xml:space="preserve">
+    <value>Confirm before overwrite</value>
+  </data>
+  <data name="SettingsConfirmBeforeOverwriteDescription" xml:space="preserve">
+    <value>Ask before replacing an existing exported file.</value>
+  </data>
+  <data name="SettingsBatchExportMaxRetriesLabel" xml:space="preserve">
+    <value>Batch export retries</value>
+  </data>
+  <data name="SettingsBatchExportMaxRetriesDescription" xml:space="preserve">
+    <value>Maximum retry attempts for failed batch export items.</value>
+  </data>
+  <data name="SettingsUnitRetries" xml:space="preserve">
+    <value>retries</value>
+  </data>
+  <data name="SettingsThemeLabel" xml:space="preserve">
+    <value>Theme</value>
+  </data>
+  <data name="SettingsLanguageLabel" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="SettingsLanguageDescription" xml:space="preserve">
+    <value>Choose the interface language; restart the app to apply fully.</value>
+  </data>
+  <data name="SettingsLanguageSystem" xml:space="preserve">
+    <value>System default</value>
+  </data>
+  <data name="SettingsLanguageNameZhCn" xml:space="preserve">
+    <value>中文（简体）</value>
+  </data>
+  <data name="SettingsLanguageNameEnUs" xml:space="preserve">
+    <value>English</value>
+  </data>
+  <data name="SettingsLanguageNameRuRu" xml:space="preserve">
+    <value>Русский</value>
+  </data>
+  <data name="SettingsLanguageNameDeDe" xml:space="preserve">
+    <value>Deutsch</value>
+  </data>
+  <data name="SettingsLanguageNameFrFr" xml:space="preserve">
+    <value>Français</value>
+  </data>
+  <data name="SettingsLanguageNameEsEs" xml:space="preserve">
+    <value>Español</value>
+  </data>
+  <data name="SettingsLanguageNameItIt" xml:space="preserve">
+    <value>Italiano</value>
+  </data>
+  <data name="SettingsLanguageNamePtBr" xml:space="preserve">
+    <value>Português (Brasil)</value>
+  </data>
+  <data name="SettingsLanguageNameJaJp" xml:space="preserve">
+    <value>日本語</value>
+  </data>
+  <data name="SettingsLanguageNameKoKr" xml:space="preserve">
+    <value>한국어</value>
+  </data>
+  <data name="SettingsLanguageNamePlPl" xml:space="preserve">
+    <value>Polski</value>
+  </data>
+  <data name="SettingsLanguageNameUkUa" xml:space="preserve">
+    <value>Українська</value>
+  </data>
+  <data name="SettingsOpenConfigFolderLabel" xml:space="preserve">
+    <value>Configuration folder</value>
+  </data>
+  <data name="SettingsOpenConfigFolderDescription" xml:space="preserve">
+    <value>Open the folder that contains settings and logs.</value>
+  </data>
+  <data name="SettingsOpenConfigFolderAction" xml:space="preserve">
+    <value>Open</value>
+  </data>
+  <data name="SettingsExportSettingsLabel" xml:space="preserve">
+    <value>Export settings</value>
+  </data>
+  <data name="SettingsExportSettingsDescription" xml:space="preserve">
+    <value>Save the current settings to a JSON file.</value>
+  </data>
+  <data name="SettingsExportSettingsAction" xml:space="preserve">
+    <value>Export</value>
+  </data>
+  <data name="SettingsImportSettingsLabel" xml:space="preserve">
+    <value>Import settings</value>
+  </data>
+  <data name="SettingsImportSettingsDescription" xml:space="preserve">
+    <value>Restore settings from a JSON file.</value>
+  </data>
+  <data name="SettingsImportSettingsAction" xml:space="preserve">
+    <value>Import</value>
+  </data>
+  <data name="SettingsDiagnosticsLabel" xml:space="preserve">
+    <value>Diagnostics</value>
+  </data>
+  <data name="SettingsDiagnosticsDescription" xml:space="preserve">
+    <value>Current version, configuration path, language, theme and graphics adapter.</value>
+  </data>
+  <data name="SettingsDiagnosticsVersionFormat" xml:space="preserve">
+    <value>Version: {0}</value>
+  </data>
+  <data name="SettingsDiagnosticsPathFormat" xml:space="preserve">
+    <value>Settings file: {0}</value>
+  </data>
+  <data name="SettingsDiagnosticsLanguageFormat" xml:space="preserve">
+    <value>Language: {0}</value>
+  </data>
+  <data name="SettingsDiagnosticsThemeFormat" xml:space="preserve">
+    <value>Theme: {0}</value>
+  </data>
+  <data name="SettingsDiagnosticsGpuFormat" xml:space="preserve">
+    <value>Graphics adapter: {0}</value>
+  </data>
+  <data name="SettingsDiagnosticsUnavailable" xml:space="preserve">
+    <value>Unavailable</value>
+  </data>
+  <data name="SettingsResetAllSettingsLabel" xml:space="preserve">
+    <value>Reset all settings</value>
+  </data>
+  <data name="SettingsResetAllSettingsDescription" xml:space="preserve">
+    <value>Restore every setting to its default value. This cannot be undone.</value>
+  </data>
+  <data name="SettingsResetAllSettingsAction" xml:space="preserve">
+    <value>Reset</value>
+  </data>
+  <data name="SettingsResetAllConfirmTitle" xml:space="preserve">
+    <value>Reset all settings?</value>
+  </data>
+  <data name="SettingsResetAllConfirmMessage" xml:space="preserve">
+    <value>Every setting, including language and theme, will return to its default value.</value>
+  </data>
+  <data name="SettingsRtxVsrMenuEnabledLabel" xml:space="preserve">
+    <value>Enable RTX VSR (right-click menu)</value>
+  </data>
+  <data name="SettingsRtxVsrMenuEnabledDescription" xml:space="preserve">
+    <value>When enabled, the image right-click menu shows "RTX VSR super-resolution"; when disabled the entry is hidden. VSR is never applied to images automatically. Requires an NVIDIA RTX GPU and the VSR runtime.</value>
+  </data>
+  <data name="SettingsRtxVsrScaleFactorLabel" xml:space="preserve">
+    <value>VSR scale factor</value>
+  </data>
+  <data name="SettingsRtxVsrScaleFactorDescription" xml:space="preserve">
+    <value>Choose 2x or 4x upscaling (Standard and High-bitrate modes only).</value>
+  </data>
+  <data name="SettingsRtxVsrModeLabel" xml:space="preserve">
+    <value>VSR processing mode</value>
+  </data>
+  <data name="SettingsRtxVsrModeDescription" xml:space="preserve">
+    <value>Standard and High-bitrate upscale 2x/4x; Denoise and Deblur process at the source resolution.</value>
+  </data>
+  <data name="SettingsRtxVsrModeStandard" xml:space="preserve">
+    <value>Standard</value>
+  </data>
+  <data name="SettingsRtxVsrModeDenoise" xml:space="preserve">
+    <value>Denoise</value>
+  </data>
+  <data name="SettingsRtxVsrModeDeblur" xml:space="preserve">
+    <value>Deblur</value>
+  </data>
+  <data name="SettingsRtxVsrModeHighBitrate" xml:space="preserve">
+    <value>High bitrate</value>
+  </data>
+  <data name="SettingsRtxVsrQualityPresetLabel" xml:space="preserve">
+    <value>VSR quality tier</value>
+  </data>
+  <data name="SettingsRtxVsrQualityPresetDescription" xml:space="preserve">
+    <value>Low / Medium / High / Ultra; higher tiers add detail at a higher cost.</value>
+  </data>
+  <data name="SettingsRtxVsrQualityLow" xml:space="preserve">
+    <value>Low</value>
+  </data>
+  <data name="SettingsRtxVsrQualityMedium" xml:space="preserve">
+    <value>Medium</value>
+  </data>
+  <data name="SettingsRtxVsrQualityHigh" xml:space="preserve">
+    <value>High</value>
+  </data>
+  <data name="SettingsRtxVsrQualityUltra" xml:space="preserve">
+    <value>Ultra</value>
+  </data>
+  <data name="SettingsVsrScale2x" xml:space="preserve">
+    <value>2x</value>
+  </data>
+  <data name="SettingsVsrScale4x" xml:space="preserve">
+    <value>4x</value>
+  </data>
+  <data name="SettingsSearchPlaceholder" xml:space="preserve">
+    <value>Search settings (Ctrl+K)</value>
+  </data>
+  <data name="SettingsSearchHint" xml:space="preserve">
+    <value>Ctrl+K to search</value>
+  </data>
+  <data name="SettingsSearchBreadcrumbFormat" xml:space="preserve">
+    <value>{0} › {1}</value>
+  </data>
+  <data name="SettingsSearchResultsHeader" xml:space="preserve">
+    <value>{0} matching settings</value>
+  </data>
+  <data name="SettingsSearchNoResults" xml:space="preserve">
+    <value>No matching settings</value>
+  </data>
+  <data name="SettingsResetPageButton" xml:space="preserve">
+    <value>Reset this page</value>
+  </data>
+  <data name="SettingsResetPageConfirmTitle" xml:space="preserve">
+    <value>Reset this page?</value>
+  </data>
+  <data name="SettingsResetPageConfirmMessage" xml:space="preserve">
+    <value>Every setting on this page will return to its default value.</value>
+  </data>
+  <data name="SettingsResetPageCompleted" xml:space="preserve">
+    <value>This page was reset to defaults</value>
+  </data>
+  <data name="SettingsResetAllCompleted" xml:space="preserve">
+    <value>All settings were reset to defaults</value>
+  </data>
+  <data name="SettingsResetToDefaultToolTip" xml:space="preserve">
+    <value>Reset to default</value>
+  </data>
+  <data name="SettingsImportConfirmTitle" xml:space="preserve">
+    <value>Import settings?</value>
+  </data>
+  <data name="SettingsImportConfirmMessage" xml:space="preserve">
+    <value>Importing replaces all current settings.</value>
+  </data>
+  <data name="SettingsDialogConfirm" xml:space="preserve">
+    <value>Continue</value>
+  </data>
+  <data name="SettingsDialogCancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="SettingsExportSucceeded" xml:space="preserve">
+    <value>Settings exported to {0}</value>
+  </data>
+  <data name="SettingsExportFailed" xml:space="preserve">
+    <value>Failed to export settings</value>
+  </data>
+  <data name="SettingsImportSucceeded" xml:space="preserve">
+    <value>Settings imported</value>
+  </data>
+  <data name="SettingsImportFailed" xml:space="preserve">
+    <value>Failed to import settings; check the file format</value>
+  </data>
+  <data name="SettingsActionFailed" xml:space="preserve">
+    <value>The operation failed</value>
+  </data>
+  <data name="SettingsConfigFileType" xml:space="preserve">
+    <value>JSON settings file</value>
+  </data>
+  <data name="RtxVsrCommand" xml:space="preserve">
+    <value>RTX VSR</value>
+  </data>
+  <data name="RtxVsrCommandToolTip" xml:space="preserve">
+    <value>Enhance the current image with NVIDIA RTX VSR ({0}, {1}x, SDR output)</value>
+  </data>
+  <data name="RtxVsrUnavailableToolTip" xml:space="preserve">
+    <value>RTX VSR unavailable: {0}</value>
+  </data>
+  <data name="RtxVsrProbingStatus" xml:space="preserve">
+    <value>Detecting RTX VSR support...</value>
+  </data>
+  <data name="RtxVsrProcessingStatus" xml:space="preserve">
+    <value>RTX VSR processing... the model loads on first use (about 3-4 s)</value>
+  </data>
+  <data name="RtxVsrReprocessingStatus" xml:space="preserve">
+    <value>RTX VSR reprocessing...</value>
+  </data>
+  <data name="RtxVsrActiveStatus" xml:space="preserve">
+    <value>RTX VSR enabled: {0}x{1} in {2:0} ms</value>
+  </data>
+  <data name="RtxVsrFailedStatus" xml:space="preserve">
+    <value>RTX VSR failed: {0}</value>
+  </data>
+  <data name="RtxVsrDisabledStatus" xml:space="preserve">
+    <value>RTX VSR disabled; showing the original image</value>
+  </data>
+  <data name="RtxVsrRestoreFailedStatus" xml:space="preserve">
+    <value>Restoring the original image failed: {0}</value>
+  </data>
+  <data name="RtxVsrBadge" xml:space="preserve">
+    <value>RTX VSR {0}x</value>
+  </data>
+  <data name="RtxVsrBadgeSdr" xml:space="preserve">
+    <value>RTX VSR {0}x (SDR)</value>
+  </data>
+  <data name="ContextMenuRtxVsr" xml:space="preserve">
+    <value>RTX VSR super-resolution</value>
+  </data>
+  <data name="RtxVsrBadgeMode" xml:space="preserve">
+    <value>RTX VSR · {0}</value>
+  </data>
+  <data name="RtxVsrBadgeUpscale" xml:space="preserve">
+    <value>RTX VSR · {0}×</value>
+  </data>
+  <data name="RtxVsrCompareHint" xml:space="preserve">
+    <value>Zoom in to inspect the detail; click "Disable RTX VSR" in the right-click menu again to compare before/after.</value>
+  </data>
+  <data name="ContextMenuRtxVsrDisable" xml:space="preserve">
+    <value>Disable RTX VSR</value>
   </data>
 </root>

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -32,13 +32,13 @@ public sealed class LocalizationTests
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir != null)
         {
-            if (File.Exists(Path.Combine(dir.FullName, "HdrImageViewer.csproj")))
+            if (File.Exists(Path.Combine(dir.FullName, "qHdrImageViewer.csproj")))
             {
                 return dir.FullName;
             }
             dir = dir.Parent;
         }
-        throw new DirectoryNotFoundException("Could not locate repository root containing HdrImageViewer.csproj");
+        throw new DirectoryNotFoundException("Could not locate repository root containing qHdrImageViewer.csproj");
     }
 
     private static Dictionary<string, string> LoadResw(string filePath)

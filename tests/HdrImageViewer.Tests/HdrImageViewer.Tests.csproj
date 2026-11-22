@@ -18,6 +18,8 @@
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <!-- RtxVsrEngine.cs (linked below) is an unsafe P/Invoke wrapper. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
@@ -86,6 +88,8 @@
     <Compile Include="..\..\Services\ImageLoadResult.cs" Link="ImageLoadResult.cs" />
     <Compile Include="..\..\Services\AppSettingsService.cs"
              Link="AppSettingsService.cs" />
+    <Compile Include="..\..\Settings\SettingChoiceMatcher.cs"
+             Link="SettingChoiceMatcher.cs" />
     <Compile Include="..\..\Services\ViewerSessionState.cs"
              Link="ViewerSessionState.cs" />
     <Compile Include="..\..\Services\CompanionVideoProbe.cs"
@@ -102,6 +106,8 @@
              Link="SharedAsyncOperation.cs" />
     <Compile Include="..\..\Services\JxlNativeDecoder.cs"
              Link="JxlNativeDecoder.cs" />
+    <Compile Include="..\..\Services\JxlGainMapDecoder.cs"
+             Link="JxlGainMapDecoder.cs" />
     <Compile Include="..\..\Services\RadianceHdrDecoder.cs"
              Link="RadianceHdrDecoder.cs" />
     <Compile Include="..\..\Services\NativeExrDecoder.cs"
@@ -137,20 +143,38 @@
              Link="ImageFormatDescriptor.cs" />
     <Compile Include="..\..\Models\JxlProbeResult.cs"
              Link="JxlProbeResult.cs" />
+    <Compile Include="..\..\Models\OpenImageZoomMode.cs"
+             Link="OpenImageZoomMode.cs" />
     <Compile Include="..\..\Models\WicImageProbeResult.cs"
              Link="WicImageProbeResult.cs" />
+    <Compile Include="..\..\Models\RtxVsrMode.cs"
+             Link="RtxVsrMode.cs" />
+    <Compile Include="..\..\Models\RtxVsrQualityPreset.cs"
+             Link="RtxVsrQualityPreset.cs" />
+    <Compile Include="..\..\Services\RtxVsrEngine.cs"
+             Link="RtxVsrEngine.cs" />
     <Compile Include="..\..\Rendering\GainMapShaderConstants.cs"
              Link="GainMapShaderConstants.cs" />
     <Compile Include="..\..\Rendering\ColorGamutMappingMode.cs"
              Link="ColorGamutMappingMode.cs" />
+    <Compile Include="..\..\Rendering\ZoomInterpolationMode.cs"
+             Link="ZoomInterpolationMode.cs" />
+    <Compile Include="..\..\Rendering\ZoomDownscaleMode.cs"
+             Link="ZoomDownscaleMode.cs" />
+    <Compile Include="..\..\Rendering\HdrHeadroomMode.cs"
+             Link="HdrHeadroomMode.cs" />
     <Compile Include="..\..\Rendering\HdrColorMath.cs"
              Link="HdrColorMath.cs" />
+    <Compile Include="..\..\Rendering\ZoomFilterKernel.cs"
+             Link="ZoomFilterKernel.cs" />
     <Compile Include="..\..\Presentation\ImageLoadController.cs"
              Link="ImageLoadController.cs" />
     <Compile Include="..\..\Presentation\ImageDeletionNavigation.cs"
              Link="ImageDeletionNavigation.cs" />
     <Compile Include="..\..\Presentation\ViewerViewportMath.cs"
              Link="ViewerViewportMath.cs" />
+    <Compile Include="..\..\Presentation\ViewerZoom.cs"
+             Link="ViewerZoom.cs" />
   </ItemGroup>
 
 </Project>

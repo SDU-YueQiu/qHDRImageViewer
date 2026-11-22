@@ -29,11 +29,19 @@ public sealed class BatchExportItem(string sourcePath) : ObservableObject
 
 public sealed class BatchExportController
 {
+    private const int RetryDelayMilliseconds = 100;
     private static readonly AsyncLocal<PathReservationScope?> ActiveReservationScope = new();
 
     public ObservableCollection<BatchExportItem> Items { get; } = [];
     public bool IsRunning { get; private set; }
     public int MaxConcurrency { get; set; } = Math.Clamp(Environment.ProcessorCount / 4, 1, 3);
+
+    /// <summary>
+    /// Gets or sets the maximum number of attempts per item, with the first
+    /// attempt included. The default of 1 preserves the historical single-attempt
+    /// behavior; BatchExportMaxRetries above 1 adds automatic retries.
+    /// </summary>
+    public int MaxAttempts { get; set; } = 1;
 
     public void Add(IEnumerable<string> paths)
     {
@@ -86,7 +94,7 @@ public sealed class BatchExportController
         }
     }
 
-    private static async Task ExecuteBoundedItemAsync(
+    private async Task ExecuteBoundedItemAsync(
         BatchExportItem item,
         SemaphoreSlim semaphore,
         Func<BatchExportItem, CancellationToken, Task<string>> export,
@@ -120,7 +128,7 @@ public sealed class BatchExportController
         }
     }
 
-    private static async Task ExecuteItemAsync(
+    private async Task ExecuteItemAsync(
         BatchExportItem item,
         Func<BatchExportItem, CancellationToken, Task<string>> export,
         CancellationToken cancellationToken)
@@ -133,22 +141,45 @@ public sealed class BatchExportController
         }
 
         item.State = BatchExportState.Running;
-        item.Detail = Localization.GetString("BatchDetailDecoding");
-        try
+        var maximumAttempts = Math.Max(1, MaxAttempts);
+        for (var attempt = 1; ; attempt++)
         {
-            var output = await export(item, cancellationToken);
-            item.State = BatchExportState.Completed;
-            item.Detail = Localization.GetString("BatchDetailCompletedFormat", output);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            item.State = BatchExportState.Canceled;
-            item.Detail = Localization.GetString("BatchDetailCanceled");
-        }
-        catch (Exception ex)
-        {
-            item.State = BatchExportState.Failed;
-            item.Detail = Localization.GetString("BatchDetailFailedFormat", ex.Message);
+            item.Detail = attempt == 1
+                ? Localization.GetString("BatchDetailDecoding")
+                : Localization.GetString("BatchDetailWaitingRetry");
+            try
+            {
+                var output = await export(item, cancellationToken);
+                item.State = BatchExportState.Completed;
+                item.Detail = Localization.GetString("BatchDetailCompletedFormat", output);
+                return;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                item.State = BatchExportState.Canceled;
+                item.Detail = Localization.GetString("BatchDetailCanceled");
+                return;
+            }
+            catch (Exception ex)
+            {
+                if (attempt >= maximumAttempts)
+                {
+                    item.State = BatchExportState.Failed;
+                    item.Detail = Localization.GetString("BatchDetailFailedFormat", ex.Message);
+                    return;
+                }
+            }
+
+            try
+            {
+                await Task.Delay(RetryDelayMilliseconds * attempt, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                item.State = BatchExportState.Canceled;
+                item.Detail = Localization.GetString("BatchDetailCanceled");
+                return;
+            }
         }
     }
 

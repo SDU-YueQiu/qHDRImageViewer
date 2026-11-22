@@ -2,9 +2,21 @@
 
 This document records the current local build, dependency, package, and sync layout. Codec behavior details live in `docs/CODECS_AND_FORMATS.md`.
 
+## Release (installable MSIX + portable zip)
+
+One command builds the shippable artifacts:
+
+```powershell
+.\eng\publish-release.ps1
+```
+
+It generates (once) a self-signed code-signing certificate under `dist\keys\`, builds the signed sideload MSIX and the portable zip, and copies everything into `artifacts\release\<version>\` with `install.ps1`, `INSTALL.md` and `BUILD_INFO.txt`. The certificate is reused on later runs so the publisher identity stays stable; the MSIX is signed with the Windows SDK `signtool.exe`. The install script needs one administrator elevation to trust the certificate in the machine trusted-people store.
+
+Other switches: `-SkipPortable`, `-SkipNative`, `-NoClean`, `-Version <x.y.z.0>`. `-SkipNative` is automatic when `native\HdrImageViewer.Native\build\x64\Release\HdrImageViewer.Native.dll` is absent.
+
 ## Current Baseline
 
-- Project: `HdrImageViewer.csproj`.
+- Project: `qHdrImageViewer.csproj` (assembly/exe: `qHdrImageViewer`).
 - Target: `net10.0-windows10.0.26100.0`.
 - Windows App SDK: `2.2.0`.
 - WinApp BuildTools: `0.4.0`.
@@ -13,7 +25,7 @@ This document records the current local build, dependency, package, and sync lay
 - Current local package output:
 
 ```text
-AppPackages\HdrImageViewer_1.0.36.0_x64_Test
+AppPackages\qHdrImageViewer_1.1.1.0_x64_Test
 ```
 
 ## Local Build
@@ -21,13 +33,13 @@ AppPackages\HdrImageViewer_1.0.36.0_x64_Test
 Build:
 
 ```powershell
-dotnet build .\HdrImageViewer.csproj -p:Platform=x64
+dotnet build .\qHdrImageViewer.csproj -p:Platform=x64
 ```
 
 Run:
 
 ```powershell
-dotnet run --project .\HdrImageViewer.csproj -p:Platform=x64 --no-build
+dotnet run --project .\qHdrImageViewer.csproj -p:Platform=x64 --no-build
 ```
 
 Launch verification should use `dotnet run`; directly starting the built exe can produce misleading Windows App SDK/package-identity failures.
@@ -40,12 +52,12 @@ Build a local portable zip:
 .\eng\publish-portable.ps1 -Version 1.0.36.0 -Platform x64
 ```
 
-If `-Version` is omitted, `eng\publish-portable.ps1` reads the version from `HdrImageViewer.csproj`.
+If `-Version` is omitted, `eng\publish-portable.ps1` reads the version from `qHdrImageViewer.csproj`.
 
 The GitHub workflow `.github/workflows/release-portable.yml` runs the same script for `v*` tags and uploads:
 
 ```text
-artifacts\HdrImageViewer-<version>-win-x64-portable.zip
+artifacts\qHdrImageViewer-<version>-win-x64-portable.zip
 ```
 
 Portable builds are framework-dependent. They rely on the x64 .NET 10 Desktop Runtime and Windows App Runtime 2.2 rather than copying Windows App SDK OS-component DLLs into the application directory. The publish target explicitly carries the app-owned XBF, PRI, and `Assets` files required for unpackaged WinUI startup.
@@ -55,13 +67,13 @@ Portable builds are framework-dependent. They rely on the x64 .NET 10 Desktop Ru
 Build and sign a local x64 MSIX package:
 
 ```powershell
-.\eng\publish-msix.ps1 -Platform x64 -PfxPath .\dist\keys\HdrImageViewer-signing.pfx -PfxPassword <password>
+.\eng\publish-msix.ps1 -Platform x64 -PfxPath .\dist\keys\qHdrImageViewer-signing.pfx -PfxPassword <password>
 ```
 
 The script generates and signs:
 
 ```text
-AppPackages\HdrImageViewer_1.0.36.0_x64_Test\HdrImageViewer_1.0.36.0_x64.msix
+AppPackages\qHdrImageViewer_1.1.1.0_x64_Test\qHdrImageViewer_1.1.1.0_x64.msix
 ```
 
 If `-PfxPath` is omitted, the script still generates the MSIX but leaves it unsigned. A clean machine must trust the matching certificate before installing a self-signed sideload package.
@@ -84,7 +96,7 @@ See [the codec upgrade notes](CODEC_UPGRADE_2026-10.md). Generated `bin/`, `obj/
 
 ## Bundled Runtime Copying
 
-`HdrImageViewer.csproj` copies these local runtime inputs when present:
+`qHdrImageViewer.csproj` copies these local runtime inputs when present:
 
 - `external\encoders\$(NativeDependencyPlatform)\**\*.*` to `encoders\$(NativeDependencyPlatform)`, preserving subdirectories.
 - `native\HdrImageViewer.Native\build\$(NativeDependencyPlatform)\Release\*.dll` to the app output root when `HdrImageViewer.Native.dll` exists.

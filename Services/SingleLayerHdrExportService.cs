@@ -302,7 +302,7 @@ public static class SingleLayerHdrExportService
         }
 
         Directory.CreateDirectory(Path.GetDirectoryName(outputPath) ?? Environment.CurrentDirectory);
-        var tempDir = Path.Combine(Path.GetTempPath(), "HdrImageViewer", "single-layer-" + Guid.NewGuid().ToString("N"));
+        var tempDir = Path.Combine(Path.GetTempPath(), "qHdrImageViewer", "single-layer-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tempDir);
         var pngPath = Path.Combine(tempDir, "hdr-rgb16.png");
         var candidateOutput = Path.Combine(tempDir, "candidate" + extension);

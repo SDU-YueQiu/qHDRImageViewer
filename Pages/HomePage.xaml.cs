@@ -1,4 +1,4 @@
-﻿using HdrImageViewer.Infrastructure;
+using HdrImageViewer.Infrastructure;
 using HdrImageViewer.Rendering;
 using HdrImageViewer.Models;
 using HdrImageViewer.Presentation;
@@ -44,7 +44,6 @@ public sealed partial class HomePage : Page
 {
     private const uint MonitorDefaultToNearest = 2;
     private const int ZoomRenderDebounceMilliseconds = 60;
-    private const int ViewerChromeAutoHideMilliseconds = 2200;
     private const int ViewerChromeAnimationMilliseconds = 160;
     private const int InspectorAnimationMilliseconds = 180;
     private const double InspectorAnimationOffset = 24.0;
@@ -75,6 +74,10 @@ public sealed partial class HomePage : Page
     private double _pendingZoomViewportY = 0.5;
     private bool _isFitZoom = true;
     private bool _isFillZoom;
+    private bool _isActualSizeZoom;
+    private bool _viewerArrowKeyHandledByPage;
+    private bool _hasDisplayedImage;
+    private (bool Fit, bool Fill, bool ActualSize, double Scale)? _lastZoomStateBeforeLoad;
     private double _wheelNavigateAccumulator;
     private bool _isCropModeEnabled;
     private bool _isDraggingCropFrame;
@@ -99,6 +102,7 @@ public sealed partial class HomePage : Page
     private bool _zoomRetargetPending;
     private bool _zoomTargetFit;
     private bool _zoomTargetFill;
+    private bool _zoomTargetActualSize;
     private readonly RetargetableViewerMotion _zoomMotion = new(1);
     private readonly Windows.UI.ViewManagement.UISettings _motionSettings = new();
     private Storyboard? _viewerChromeStoryboard;
@@ -123,6 +127,7 @@ public sealed partial class HomePage : Page
     private bool _isCompanionMediaPreparing;
     private AppUserSettings _settings = AppSettingsService.Current;
     private bool _updatingHdrModeControls;
+    private bool _isApplyingLocalSettingChange;
     private bool _isImmersiveEventAttached;
     private bool _isDisplayInformationEventAttached;
     private bool _isSettingsEventAttached;
@@ -181,6 +186,7 @@ public sealed partial class HomePage : Page
         InitializeComponent();
         InitializeLocalizedUI();
         InitializeViewerChrome();
+        InitializeRtxVsr();
         _filmstripThumbnails = new FilmstripThumbnailController(FilmstripItems, _lifetimeToken);
         _imagePreloads = new ImagePreloadController(_lifetimeToken);
         _imageLoads = new ImageLoadController(_lifetimeToken);
@@ -190,8 +196,8 @@ public sealed partial class HomePage : Page
         _filmstripViewportTimer.IsRepeating = false;
         _filmstripViewportTimer.Tick += (_, _) => QueueVisibleFilmstripThumbnails();
         _viewerChromeHideTimer = DispatcherQueue.CreateTimer();
-        _viewerChromeHideTimer.Interval = TimeSpan.FromMilliseconds(ViewerChromeAutoHideMilliseconds);
         _viewerChromeHideTimer.Tick += ViewerChromeHideTimer_Tick;
+        ApplyViewerChromeAutoHideSetting();
         UpdateFolderNavigationOverlay();
         UpdateZoomControls();
         Loaded += HomePage_Loaded;
@@ -963,6 +969,7 @@ public sealed partial class HomePage : Page
             _statusFileSize = fileLength is { } bytes ? FormatFileSizeBytes(bytes) : string.Empty;
             _sourceOrientedPixelSize = sourceSize is { } size ? (checked((int)size.Width), checked((int)size.Height)) : null;
             ResetViewerToolsForDocument();
+            ResetRtxVsrForNewDocument();
             await UpdateHdrModeControlsForDocumentAsync(document, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             if (explicitNavigationPaths is not null)
@@ -975,9 +982,9 @@ public sealed partial class HomePage : Page
                 _currentNavigationIsExplicit = false;
                 SelectCurrentFolderImage(path);
             }
+            CaptureZoomStateBeforeLoad();
             ResetZoomToFit();
-            ResetInteractionScaleTransform();
-            probeTimer.Stop();
+            ResetInteractionScaleTransform();            probeTimer.Stop();
             HdrSwapChainHost.Visibility = Visibility.Visible;
             _renderer.RestoreSwapChainPanelBinding();
 
@@ -1051,11 +1058,16 @@ public sealed partial class HomePage : Page
                 return ImageLoadOutcome.Canceled;
             }
 
+            // The scroll extent carries drag slack for contained images, so a
+            // pan offset from the previous image must not leak into the new
+            // one: fit mode always opens centered.
+            CenterScrollableImage();
             PositionComparisonDivider();
             ScheduleAnalysisAutoRefresh();
             openTimer.Stop();
             renderStatus = $"{renderStatus}; open timing probe {probeTimer.ElapsedMilliseconds}ms, resize {resizeTimer.ElapsedMilliseconds}ms, render {renderTimer.ElapsedMilliseconds}ms, total {openTimer.ElapsedMilliseconds}ms";
             ViewerSessionState.SaveImage(document.Path, _folderImagePaths, _currentNavigationIsExplicit);
+            MaybeApplyOpenImageZoomMode();
             if (_currentNavigationIsExplicit)
             {
                 QueueAdjacentPreloads();
@@ -1461,6 +1473,13 @@ public sealed partial class HomePage : Page
     {
         try
         {
+            // Actual size is defined in physical pixels, so a DPI change has to
+            // rebuild the layout instead of only refreshing the percentage.
+            if (_isActualSizeZoom && !_isZoomPreviewActive && !_isUpdatingSwapChainHostLayout)
+            {
+                UpdateImageSurfaceLayout();
+            }
+
             UpdateZoomPresentation();
             if (_isZoomPreviewActive || _isUpdatingSwapChainHostLayout)
             {
@@ -1534,6 +1553,15 @@ public sealed partial class HomePage : Page
                 return;
             }
 
+            var headroomMode = HdrHeadroomModeSelector.SelectedIndex == 1
+                ? HdrHeadroomMode.Manual
+                : HdrHeadroomMode.SystemAdaptive;
+            if (_settings.HdrHeadroomMode != headroomMode)
+            {
+                _settings.HdrHeadroomMode = headroomMode;
+                PersistSettingWithoutFullApply(() => AppSettingsService.SetHdrHeadroomMode(headroomMode));
+            }
+
             await ApplyHdrPreviewOverrideAsync();
         }
         catch (Exception ex)
@@ -1546,6 +1574,18 @@ public sealed partial class HomePage : Page
     {
         try
         {
+            if (_updatingHdrModeControls)
+            {
+                return;
+            }
+
+            var isOn = SdrWhiteOverrideToggle.IsOn;
+            if (_settings.SdrWhiteOverrideEnabled != isOn)
+            {
+                _settings.SdrWhiteOverrideEnabled = isOn;
+                PersistSettingWithoutFullApply(() => AppSettingsService.SetSdrWhiteOverrideEnabled(isOn));
+            }
+
             UpdateSdrWhiteControls();
             await ApplyHdrPreviewOverrideAsync();
         }
@@ -1559,6 +1599,18 @@ public sealed partial class HomePage : Page
     {
         try
         {
+            if (_updatingHdrModeControls)
+            {
+                return;
+            }
+
+            var nits = AppUserSettings.NormalizeSdrWhiteNits((int)Math.Round(e.NewValue));
+            if (_settings.SdrWhiteNits != nits)
+            {
+                _settings.SdrWhiteNits = nits;
+                PersistSettingWithoutFullApply(() => AppSettingsService.SetSdrWhiteNits(nits));
+            }
+
             UpdateSdrWhiteControls();
             await ApplyHdrPreviewOverrideAsync();
         }
@@ -1572,6 +1624,18 @@ public sealed partial class HomePage : Page
     {
         try
         {
+            if (_updatingHdrModeControls)
+            {
+                return;
+            }
+
+            var stops = AppUserSettings.NormalizeHdrManualHeadroomStops(CalculateManualHeadroomStopsFromSlider());
+            if (Math.Abs(_settings.HdrManualHeadroomStops - stops) > 0.0001)
+            {
+                _settings.HdrManualHeadroomStops = stops;
+                PersistSettingWithoutFullApply(() => AppSettingsService.SetHdrManualHeadroomStops(stops));
+            }
+
             UpdateHdrGainValueText();
             if (HdrPreviewModeSelector is not null && HdrGainPanel?.Visibility == Visibility.Visible)
             {
@@ -1599,10 +1663,22 @@ public sealed partial class HomePage : Page
 
     private void AppSettingsService_SettingsChanged(object? sender, EventArgs e)
     {
+        var previous = _settings;
         _settings = AppSettingsService.Current;
+        if (_isApplyingLocalSettingChange)
+        {
+            // A viewer control already applied its own change; re-running the
+            // whole fan-out here would duplicate the preview render.
+            return;
+        }
+
         ApplyViewerSettings();
+        var trimCaches = previous.DecodedCacheBudgetMegabytes != _settings.DecodedCacheBudgetMegabytes
+            || previous.MetadataCacheMaxFiles != _settings.MetadataCacheMaxFiles
+            || previous.DirectoryIndexCacheCount != _settings.DirectoryIndexCacheCount;
+        ApplyPerformanceSettings(trimCaches);
+        ApplyRtxVsrSettingChange(previous);
         QueueAdjacentPreloads();
-        _ = ApplyHdrPreviewOverrideAsync();
     }
 
     internal async void HandleViewerKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
@@ -1661,18 +1737,22 @@ public sealed partial class HomePage : Page
                     break;
                 case VirtualKey.Left when !isControlDown && !isAltDown && !isSliderOrComboFocused:
                     e.Handled = true;
+                    _viewerArrowKeyHandledByPage = true;
                     await NavigateFolderImageAsync(-1);
                     break;
                 case VirtualKey.Right when !isControlDown && !isAltDown && !isSliderOrComboFocused:
                     e.Handled = true;
+                    _viewerArrowKeyHandledByPage = true;
                     await NavigateFolderImageAsync(1);
                     break;
                 case VirtualKey.Home when !isControlDown && !isShiftDown && !isAltDown && !isSliderOrComboFocused:
                     e.Handled = true;
+                    _viewerArrowKeyHandledByPage = true;
                     await NavigateToFolderEdgeAsync(toLast: false);
                     break;
                 case VirtualKey.End when !isControlDown && !isShiftDown && !isAltDown && !isSliderOrComboFocused:
                     e.Handled = true;
+                    _viewerArrowKeyHandledByPage = true;
                     await NavigateToFolderEdgeAsync(toLast: true);
                     break;
                 case VirtualKey.Space when !isControlDown && !isShiftDown && !isAltDown && !isSliderOrComboFocused && !IsInteractiveButtonOrToggleFocused(focused) && ViewModel.HasCompanionMedia:
@@ -1696,13 +1776,13 @@ public sealed partial class HomePage : Page
                 case (VirtualKey)187 when !isAltDown && !isSliderOrComboFocused && ViewModel.HasImage:
                     e.Handled = true;
                     SetPendingZoomAnchorToViewportCenter();
-                    await ZoomByFactorAsync(1.25, deferRender: true);
+                    await ZoomByFactorAsync(ZoomStepFactor, deferRender: true);
                     break;
                 case VirtualKey.Subtract when !isAltDown && !isSliderOrComboFocused && ViewModel.HasImage:
                 case (VirtualKey)189 when !isAltDown && !isSliderOrComboFocused && ViewModel.HasImage:
                     e.Handled = true;
                     SetPendingZoomAnchorToViewportCenter();
-                    await ZoomByFactorAsync(1.0 / 1.25, deferRender: true);
+                    await ZoomByFactorAsync(InvertedZoomStepFactor, deferRender: true);
                     break;
                 case VirtualKey.Number0 when !isShiftDown && !isAltDown && !isSliderOrComboFocused:
                 case VirtualKey.NumberPad0 when !isShiftDown && !isAltDown && !isSliderOrComboFocused:
@@ -1728,6 +1808,76 @@ public sealed partial class HomePage : Page
         {
             HandleUnexpectedUiException(ex);
         }
+    }
+
+    /// <summary>
+    /// Arrow/Home/End navigation is normally handled by
+    /// <see cref="HandleViewerKeyDown"/>. Child controls such as the filmstrip
+    /// ListView can consume those keys first (moving only their selection), so
+    /// the window registers a handled-events-too handler and forwards the key
+    /// here: image navigation always wins over filmstrip focus movement.
+    /// </summary>
+    internal async Task HandleViewerArrowKeyAfterChildAsync(Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
+    {
+        try
+        {
+            if (_isShutDown || !e.Handled)
+            {
+                return;
+            }
+
+            var key = e.Key;
+            if (key is not (VirtualKey.Left or VirtualKey.Right or VirtualKey.Home or VirtualKey.End))
+            {
+                return;
+            }
+
+            var focused = XamlRoot is null
+                ? null
+                : Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(XamlRoot) as DependencyObject;
+            if (IsInsideContentDialog(focused)
+                || IsTextInputControlFocused(focused)
+                || IsSliderOrComboFocused(focused))
+            {
+                return;
+            }
+
+            var isControlDown = IsKeyDown(VirtualKey.Control);
+            var isShiftDown = IsKeyDown(VirtualKey.Shift);
+            var isAltDown = IsKeyDown(VirtualKey.Menu);
+            if (key is VirtualKey.Left or VirtualKey.Right)
+            {
+                if (isControlDown || isAltDown || !ViewModel.HasImage)
+                {
+                    return;
+                }
+
+                e.Handled = true;
+                await NavigateFolderImageAsync(key == VirtualKey.Left ? -1 : 1);
+            }
+            else
+            {
+                if (isControlDown || isShiftDown || isAltDown || !ViewModel.HasImage)
+                {
+                    return;
+                }
+
+                e.Handled = true;
+                await NavigateToFolderEdgeAsync(toLast: key == VirtualKey.End);
+            }
+        }
+        catch (Exception ex)
+        {
+            HandleUnexpectedUiException(ex);
+        }
+    }
+
+    /// <summary>Consumes the flag set by <see cref="HandleViewerKeyDown"/> for arrow keys.</summary>
+    internal bool ConsumeViewerArrowKeyHandledByPage()
+    {
+        var handled = _viewerArrowKeyHandledByPage;
+        _viewerArrowKeyHandledByPage = false;
+        return handled;
     }
 
     private static bool IsKeyDown(VirtualKey key)
@@ -1827,7 +1977,7 @@ public sealed partial class HomePage : Page
             if (shouldZoom)
             {
                 SetPendingZoomAnchor(pointerPoint.Position);
-                var factor = Math.Pow(1.06, wheelDelta / 120.0);
+                var factor = CalculateWheelZoomFactor(wheelDelta);
                 await ZoomByFactorAsync(factor, deferRender: true);
             }
             else
@@ -1967,7 +2117,7 @@ public sealed partial class HomePage : Page
             }
 
             SetPendingZoomAnchorToViewportCenter();
-            await ZoomByFactorAsync(1.0 / 1.25, deferRender: true);
+            await ZoomByFactorAsync(InvertedZoomStepFactor, deferRender: true);
         }
         catch (Exception ex)
         {
@@ -1985,7 +2135,7 @@ public sealed partial class HomePage : Page
             }
 
             SetPendingZoomAnchorToViewportCenter();
-            await ZoomByFactorAsync(1.25, deferRender: true);
+            await ZoomByFactorAsync(ZoomStepFactor, deferRender: true);
         }
         catch (Exception ex)
         {
@@ -2014,6 +2164,8 @@ public sealed partial class HomePage : Page
             return;
         }
 
+        // Slider and preset percentages honor the persisted zoom ceiling.
+        var clampedPercentage = Math.Clamp(percentage, 1.0, MaximumZoomPercentage);
         _actualSizeCts?.Cancel();
         var source = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeToken);
         _actualSizeCts = source;
@@ -2051,7 +2203,10 @@ public sealed partial class HomePage : Page
                 CommitSdrFallbackImage(original);
             }
             UpdateViewerStatus();
-            AnimateZoomTo(CalculateActualSizeZoomScale() * percentage / 100);
+            var actualSizeScale = CalculateActualSizeZoomScale();
+            AnimateZoomTo(
+                actualSizeScale * clampedPercentage / 100,
+                actualSize: Math.Abs(clampedPercentage - 100) < 0.05);
             cancellationToken.ThrowIfCancellationRequested();
         }
         catch (OperationCanceledException)
@@ -2074,6 +2229,33 @@ public sealed partial class HomePage : Page
 
     private void ZoomFit_Click(object sender, RoutedEventArgs e) => AnimateZoomToMode(fill: false);
 
+    // Windows Photos uses the button left of the zoom percentage as a mode
+    // toggle: in fit-to-window it jumps to actual size, and at any other zoom
+    // level it fits the image back into the window.
+    private async void ZoomModeToggle_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (!ViewModel.HasImage)
+            {
+                return;
+            }
+
+            if (_isFitZoom || _zoomTargetFit)
+            {
+                await ApplyActualSizeAsync();
+            }
+            else
+            {
+                AnimateZoomToMode(fill: false);
+            }
+        }
+        catch (Exception ex)
+        {
+            HandleUnexpectedUiException(ex);
+        }
+    }
+
     private void ZoomFill_Click(object sender, RoutedEventArgs e) => AnimateZoomToMode(fill: true);
 
     private void AnimateZoomToMode(bool fill)
@@ -2083,10 +2265,15 @@ public sealed partial class HomePage : Page
         var aspect = ImageSurface.Width / ImageSurface.Height;
         var fitSize = ViewerViewportMath.CalculateFitSize(PreviewSurface.ActualWidth, PreviewSurface.ActualHeight, aspect);
         var fillSize = ViewerViewportMath.CalculateFillSize(PreviewSurface.ActualWidth, PreviewSurface.ActualHeight, aspect);
-        AnimateZoomTo(fill ? fillSize.Width / fitSize.Width : 1, fit: !fill, fill: fill);
+        // Fit targets the capped fit scale (never above 100 %), matching the
+        // size the fit layout commits when the image is smaller than the window.
+        var target = fill
+            ? fillSize.Width / fitSize.Width
+            : ViewerViewportMath.CalculateFitZoomTargetScale(CalculateFitModeActualSizeScale());
+        AnimateZoomTo(target, fit: !fill, fill: fill);
     }
 
-    private void AnimateZoomTo(double target, bool fit = false, bool fill = false)
+    private void AnimateZoomTo(double target, bool fit = false, bool fill = false, bool actualSize = false)
     {
         CommitNativeZoom();
         if (!ViewModel.HasImage || ImageSurface.Height <= 0 || PreviewSurface.ActualWidth <= 0 || PreviewSurface.ActualHeight <= 0) return;
@@ -2096,9 +2283,10 @@ public sealed partial class HomePage : Page
         var hasAnchor = TryCaptureViewportAnchor(out var x, out var y, out var viewportX, out var viewportY);
         StopZoomAnimation();
         _zoomScale = displayedScale;
-        _isFitZoom = _isFillZoom = false;
+        _isFitZoom = _isFillZoom = _isActualSizeZoom = false;
         _zoomTargetFit = fit;
         _zoomTargetFill = fill;
+        _zoomTargetActualSize = actualSize;
         _targetZoomScale = target;
         StartZoomAnimation(hasAnchor, x, y, viewportX, viewportY);
     }
@@ -2249,11 +2437,47 @@ public sealed partial class HomePage : Page
         ImageSurface.RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5);
     }
 
+    private double ZoomStepFactor =>
+        AppUserSettings.NormalizeWheelZoomStepFactor(_settings.WheelZoomStepFactor);
+
+    private double InvertedZoomStepFactor => 1.0 / ZoomStepFactor;
+
+    private double MaximumZoomPercentage => AppUserSettings.NormalizeMaxZoomPercent(_settings.MaxZoomPercent);
+
+    private double MaximumZoomScale => MaximumZoomPercentage / 100.0;
+
+    private double CalculateWheelZoomFactor(int wheelDelta)
+    {
+        return wheelDelta == 0
+            ? 1.0
+            : Math.Pow(ZoomStepFactor, wheelDelta / (double)ViewerZoom.WheelDeltaPerNotch);
+    }
+
+    /// <summary>
+    /// Writes a control-originated setting without re-running the full
+    /// SettingsChanged fan-out. The calling control handler re-applies exactly
+    /// the renderer state it owns, which avoids a duplicate render per change.
+    /// </summary>
+    private void PersistSettingWithoutFullApply(Action persist)
+    {
+        var previous = _isApplyingLocalSettingChange;
+        _isApplyingLocalSettingChange = true;
+        try
+        {
+            persist();
+        }
+        finally
+        {
+            _isApplyingLocalSettingChange = previous;
+        }
+    }
+
     private async Task ZoomByFactorAsync(double factor, bool deferRender = false)
     {
         CommitNativeZoom();
-        _zoomTargetFit = _zoomTargetFill = false;
-        if ((_isFitZoom || _isFillZoom) && ImageSurface.Height > 0 && PreviewSurface.ActualWidth > 0 && PreviewSurface.ActualHeight > 0)
+        _zoomTargetFit = _zoomTargetFill = _zoomTargetActualSize = false;
+        if ((_isFitZoom || _isFillZoom || _isActualSizeZoom)
+            && ImageSurface.Height > 0 && PreviewSurface.ActualWidth > 0 && PreviewSurface.ActualHeight > 0)
         {
             var fit = ViewerViewportMath.CalculateFitSize(PreviewSurface.ActualWidth, PreviewSurface.ActualHeight,
                 ImageSurface.Width / ImageSurface.Height);
@@ -2261,6 +2485,7 @@ public sealed partial class HomePage : Page
         }
         _isFitZoom = false;
         _isFillZoom = false;
+        _isActualSizeZoom = false;
         var hasAnchor = TryConsumePendingZoomAnchor(
                 out var anchorX,
                 out var anchorY,
@@ -2268,7 +2493,17 @@ public sealed partial class HomePage : Page
                 out var anchorViewportY)
             || TryCaptureViewportAnchor(out anchorX, out anchorY, out anchorViewportX, out anchorViewportY);
         ResetInteractionScaleTransform();
-        var clampedScale = ViewerViewportMath.ClampUserZoomScale(_targetZoomScale * factor, CalculateActualSizeZoomScale());
+        var clampedScale = ViewerViewportMath.ClampUserZoomScale(
+            _targetZoomScale * factor,
+            CalculateActualSizeZoomScale(),
+            MaximumZoomScale);
+        if (factor < 1.0 && _settings.LimitWheelZoomOutToFit)
+        {
+            // A zoom-out gesture must never cross below fit-to-window; from fit
+            // it becomes a no-op instead of shrinking past the whole image.
+            clampedScale = ViewerViewportMath.ClampZoomOutToFit(clampedScale, _targetZoomScale);
+        }
+
         // Fit can be outside the manual zoom range; never reverse the requested direction.
         _targetZoomScale = factor >= 1 ? Math.Max(_targetZoomScale, clampedScale) : Math.Min(_targetZoomScale, clampedScale);
         if (deferRender)
@@ -2309,7 +2544,7 @@ public sealed partial class HomePage : Page
     {
         DetachZoomRendering();
         _hasZoomAnimationAnchor = false;
-        _zoomTargetFit = _zoomTargetFill = false;
+        _zoomTargetFit = _zoomTargetFill = _zoomTargetActualSize = false;
         _isZoomCommitInProgress = false;
         _suppressSwapChainSizeChangedForZoom = false;
     }
@@ -2343,12 +2578,24 @@ public sealed partial class HomePage : Page
         if (complete)
         {
             DetachZoomRendering();
-            if (_zoomTargetFit || _zoomTargetFill)
+            if (_zoomTargetFit || _zoomTargetFill || _zoomTargetActualSize)
             {
                 _isFitZoom = _zoomTargetFit;
                 _isFillZoom = _zoomTargetFill;
-                _zoomScale = _targetZoomScale = 1;
-                _zoomTargetFit = _zoomTargetFill = false;
+                _isActualSizeZoom = _zoomTargetActualSize;
+                if (_isFitZoom || _isFillZoom)
+                {
+                    // Fit and fill derive their layout from the viewport, not
+                    // from _zoomScale, so the scale bookkeeping resets to 1.
+                    _zoomScale = _targetZoomScale = 1;
+                }
+                else
+                {
+                    // Actual size keeps its physical-pixel scale so a later
+                    // resize or zoom step starts from the displayed size.
+                    _zoomScale = _targetZoomScale;
+                }
+                _zoomTargetFit = _zoomTargetFill = _zoomTargetActualSize = false;
                 UpdateZoomControls();
             }
             _committedZoomScale = _zoomScale;
@@ -2455,6 +2702,7 @@ public sealed partial class HomePage : Page
         StopZoomAnimation();
         _isFitZoom = true;
         _isFillZoom = false;
+        _isActualSizeZoom = false;
         _zoomScale = 1.0;
         _targetZoomScale = 1.0;
         _committedZoomScale = 1.0;
@@ -2473,11 +2721,49 @@ public sealed partial class HomePage : Page
 
         var hasImage = ViewModel.HasImage;
 
-        ZoomFitButton.IsEnabled = hasImage && !_isFitZoom;
-        ActualSizeButton.IsEnabled = hasImage;
+        // Windows Photos keeps the mode button usable in every zoom state:
+        // in fit-to-window it switches to actual size, otherwise it fits.
+        ZoomFitButton.IsEnabled = hasImage;
+        ActualSizeButton.IsEnabled = hasImage && !_isActualSizeZoom;
+        ZoomFitMenuItem.IsEnabled = hasImage && !_isFitZoom;
         ZoomFillButton.IsEnabled = hasImage && !_isFillZoom;
         UpdateZoomPresentation();
         UpdateViewerStatus();
+        UpdateRtxVsrUi();
+    }
+
+    private void CaptureZoomStateBeforeLoad()
+    {
+        _lastZoomStateBeforeLoad = _hasDisplayedImage
+            ? (_isFitZoom, _isFillZoom, _isActualSizeZoom, _zoomScale)
+            : null;
+    }
+
+    private void MaybeApplyOpenImageZoomMode()
+    {
+        _hasDisplayedImage = true;
+        switch (_settings.OpenImageZoomMode)
+        {
+            case OpenImageZoomMode.ActualSize:
+                _ = ApplyActualSizeAsync();
+                break;
+            case OpenImageZoomMode.Last when _lastZoomStateBeforeLoad is { } state:
+                RestoreZoomState(state);
+                break;
+        }
+    }
+
+    private void RestoreZoomState((bool Fit, bool Fill, bool ActualSize, double Scale) state)
+    {
+        StopZoomAnimation();
+        _isFitZoom = state.Fit;
+        _isFillZoom = state.Fill;
+        _isActualSizeZoom = state.ActualSize;
+        _zoomScale = state.Scale;
+        UpdateImageSurfaceLayout();
+        CenterScrollableImage();
+        UpdateZoomControls();
+        _ = PresentViewportAsync(_lifetimeToken);
     }
 
     private async Task ApplyHdrPreviewOverrideAsync(bool redraw = true, CancellationToken cancellationToken = default)
@@ -2493,16 +2779,9 @@ public sealed partial class HomePage : Page
         effectiveCancellationToken.ThrowIfCancellationRequested();
 
         var viewMode = GetSelectedHdrViewMode();
-        var headroomMode = HdrHeadroomModeSelector?.SelectedIndex switch
-        {
-            1 => HdrHeadroomMode.Manual,
-            2 => HdrHeadroomMode.AblSoftProof,
-            _ => HdrHeadroomMode.SystemAdaptive,
-        };
-        if (headroomMode == HdrHeadroomMode.AblSoftProof)
-        {
-            headroomMode = HdrHeadroomMode.SystemAdaptive;
-        }
+        // Headroom is a persisted preference: derive it from settings rather than
+        // the control so a new image or an automatic fallback cannot drop it.
+        var headroomMode = AppUserSettings.NormalizeHdrHeadroomMode(_settings.HdrHeadroomMode);
 
         var headroomControlsEnabled = viewMode == GainmapViewMode.Adaptive;
         var usesSlider = headroomControlsEnabled && headroomMode == HdrHeadroomMode.Manual;
@@ -2535,10 +2814,12 @@ public sealed partial class HomePage : Page
             viewMode,
             headroomMode,
             usesSlider && HdrGainSlider is not null ? CalculateManualDisplayCapacityStops() : null,
-            AdaptiveToneMappingEnabled: false,
+            AdaptiveToneMappingEnabled: _settings.AdaptiveToneMappingEnabled,
             CalculateReferenceWhiteExposureScale(),
             _settings.ColorGamutMappingMode,
-            displayConfiguration));
+            displayConfiguration,
+            _settings.ZoomInterpolationUpscale,
+            _settings.ZoomDownscaleMode));
 
         if (IsLoaded && redraw)
         {
@@ -2586,9 +2867,13 @@ public sealed partial class HomePage : Page
 
             HdrPreviewModeSelector.SelectedIndex = (int)_settings.GetEffectiveHdrViewMode(hasGainMap, isSingleLayerHdr);
 
-            if (HdrHeadroomModeSelector is not null && HdrHeadroomModeSelector.SelectedIndex < 0)
+            if (HdrHeadroomModeSelector is not null)
             {
-                HdrHeadroomModeSelector.SelectedIndex = 0;
+                // Restore the persisted manual/system headroom choice per image.
+                HdrHeadroomModeSelector.SelectedIndex =
+                    AppUserSettings.NormalizeHdrHeadroomMode(_settings.HdrHeadroomMode) == HdrHeadroomMode.Manual
+                        ? 1
+                        : 0;
             }
         }
         finally
@@ -2614,15 +2899,112 @@ public sealed partial class HomePage : Page
 
     private void ApplyViewerSettings()
     {
+        ZoomSlider.Minimum = 1;
+        ViewerMotion.ZoomDurationMilliseconds =
+            AppUserSettings.NormalizeZoomAnimationDurationMilliseconds(_settings.ZoomAnimationDurationMilliseconds);
+        ApplyViewerChromeAutoHideSetting();
+        ApplyHdrSettingsToControls();
+        ApplyPerformanceSettings(trimCaches: false);
+        if (!_settings.AnalysisAutoRefreshEnabled)
+        {
+            _analysisAutoRefreshTimer?.Stop();
+        }
+
         ImageScroller.ZoomMode = _settings.TouchpadGesturesEnabled ? ZoomMode.Enabled : ZoomMode.Disabled;
         _renderer.ApplySettings(_renderer.Settings with
         {
             ColorGamutMappingMode = _settings.ColorGamutMappingMode,
+            ZoomInterpolationUpscale = _settings.ZoomInterpolationUpscale,
+            ZoomDownscale = _settings.ZoomDownscaleMode,
         });
 
         ApplyInspectorLayout();
 
         UpdateFolderNavigationOverlay();
+
+        if (_currentDocument is not null)
+        {
+            // Re-apply view mode, headroom and exposure so persisted HDR state
+            // survives settings changes; the renderer skips unchanged records.
+            _ = ApplyHdrPreviewOverrideAsync();
+        }
+    }
+
+    /// <summary>
+    /// Pushes the persisted HDR/color preferences into the inspector controls.
+    /// Runs on load and on settings changes so the next image starts from the
+    /// saved mode instead of the XAML defaults.
+    /// </summary>
+    private void ApplyHdrSettingsToControls()
+    {
+        if (HdrHeadroomModeSelector is null
+            || SdrWhiteOverrideToggle is null
+            || SdrWhiteSlider is null
+            || HdrGainSlider is null)
+        {
+            return;
+        }
+
+        // The persisted SdrWhiteNits range is narrower than the inspector slider
+        // used to be; keep both in agreement so the value cannot jump on save.
+        SdrWhiteSlider.Minimum = AppUserSettings.MinSdrWhiteNits;
+        SdrWhiteSlider.Maximum = AppUserSettings.MaxSdrWhiteNits;
+        _updatingHdrModeControls = true;
+        try
+        {
+            HdrHeadroomModeSelector.SelectedIndex =
+                AppUserSettings.NormalizeHdrHeadroomMode(_settings.HdrHeadroomMode) == HdrHeadroomMode.Manual
+                    ? 1
+                    : 0;
+            SdrWhiteOverrideToggle.IsOn = _settings.SdrWhiteOverrideEnabled;
+            SdrWhiteSlider.Value = AppUserSettings.NormalizeSdrWhiteNits(_settings.SdrWhiteNits);
+            HdrGainSlider.Value = ConvertManualHeadroomStopsToTargetNits(_settings.HdrManualHeadroomStops);
+        }
+        finally
+        {
+            _updatingHdrModeControls = false;
+        }
+
+        UpdateSdrWhiteControls();
+        UpdateHdrGainValueText();
+    }
+
+    private double GetManualHeadroomReferenceWhiteNits() =>
+        Math.Max(_renderer.DisplayConfiguration.SdrWhiteLevelInNits, AppUserSettings.MinSdrWhiteNits);
+
+    private double ConvertManualHeadroomStopsToTargetNits(double stops)
+    {
+        var normalizedStops = AppUserSettings.NormalizeHdrManualHeadroomStops(stops);
+        var targetNits = GetManualHeadroomReferenceWhiteNits() * Math.Pow(2.0, normalizedStops);
+        return Math.Clamp(targetNits, HdrGainSlider.Minimum, HdrGainSlider.Maximum);
+    }
+
+    private double CalculateManualHeadroomStopsFromSlider()
+    {
+        if (HdrGainSlider is null)
+        {
+            return 0.0;
+        }
+
+        var referenceWhite = GetManualHeadroomReferenceWhiteNits();
+        return HdrGainSlider.Value <= referenceWhite
+            ? 0.0
+            : Math.Log2(HdrGainSlider.Value / referenceWhite);
+    }
+
+    private void ApplyPerformanceSettings(bool trimCaches)
+    {
+        ImagePreloadCache.DecodedCacheBudgetMegabytes = _settings.DecodedCacheBudgetMegabytes;
+        DirectoryMetadataCache.MaxDiskCacheFiles = _settings.MetadataCacheMaxFiles;
+        FolderImageIndexCache.MaximumCachedDirectories = _settings.DirectoryIndexCacheCount;
+        ImageMemoryPressureService.AutoTrimEnabled = _settings.MemoryPressureAutoTrim;
+        if (!trimCaches)
+        {
+            return;
+        }
+
+        ImagePreloadCache.TrimToDecodedBudget();
+        DirectoryMetadataCache.RequestDiskCacheTrim();
     }
 
     private void SnapHdrGainSliderToDisplayPeakIfNeeded()
@@ -2991,12 +3373,37 @@ public sealed partial class HomePage : Page
             : _renderer.ContentDisplayAspectRatio);
         if (contentAspectRatio is { } aspectRatio && aspectRatio > 0.0)
         {
-            (targetWidth, targetHeight) = _isFillZoom
-                ? ViewerViewportMath.CalculateFillSize(availableWidth, availableHeight, aspectRatio)
-                : ViewerViewportMath.CalculateFitSize(availableWidth, availableHeight, aspectRatio);
+            if (_isFillZoom)
+            {
+                (targetWidth, targetHeight) = ViewerViewportMath.CalculateFillSize(availableWidth, availableHeight, aspectRatio);
+            }
+            else if (_isFitZoom)
+            {
+                // Fit-to-window must not upscale a small image: cap it at the
+                // actual-size (100 %) scale and center it like Windows Photos.
+                (targetWidth, targetHeight) = ViewerViewportMath.CalculateCappedFitSize(
+                    availableWidth,
+                    availableHeight,
+                    aspectRatio,
+                    CalculateFitModeActualSizeScale());
+            }
+            else
+            {
+                (targetWidth, targetHeight) = ViewerViewportMath.CalculateFitSize(availableWidth, availableHeight, aspectRatio);
+            }
         }
 
-        if (!_isFitZoom && !_isFillZoom)
+        if (_isActualSizeZoom)
+        {
+            // Actual size maps one source pixel to one physical display pixel,
+            // so it must be recomputed instead of carried as a fit-relative
+            // scale; otherwise 100 % drifts after a window resize or DPI change.
+            var actualSizeScale = CalculateActualSizeZoomScale();
+            targetWidth *= actualSizeScale;
+            targetHeight *= actualSizeScale;
+            _zoomScale = actualSizeScale;
+        }
+        else if (!_isFitZoom && !_isFillZoom)
         {
             targetWidth *= _zoomScale;
             targetHeight *= _zoomScale;
@@ -3022,8 +3429,16 @@ public sealed partial class HomePage : Page
     {
         var targetWidth = Math.Max(1.0, width);
         var targetHeight = Math.Max(1.0, height);
-        var viewportWidth = Math.Max(PreviewSurface.ActualWidth, targetWidth);
-        var viewportHeight = Math.Max(PreviewSurface.ActualHeight, targetHeight);
+        // A contained image gets drag slack in the scroll extent so mouse and
+        // touch panning can reposition it inside the preview; larger images
+        // keep the image-sized extent used by the existing pan path.
+        var (viewportWidth, viewportHeight) = ViewerViewportMath.CalculateImageViewportSize(
+            PreviewSurface.ActualWidth,
+            PreviewSurface.ActualHeight,
+            targetWidth,
+            targetHeight);
+        viewportWidth = Math.Max(1.0, viewportWidth);
+        viewportHeight = Math.Max(1.0, viewportHeight);
         var changed = Math.Abs(ImageSurface.Width - targetWidth) > 0.5
             || Math.Abs(ImageSurface.Height - targetHeight) > 0.5
             || double.IsNaN(ImageViewport.Width)
@@ -3077,6 +3492,15 @@ public sealed partial class HomePage : Page
             HdrSwapChainHost.CompositionScaleY,
             orientationSwapsDimensions);
     }
+
+    /// <summary>
+    /// Actual-size scale used by the fit-to-window cap. Large images keep the
+    /// plain fit size through <see cref="ViewerViewportMath.CalculateFitZoomTargetScale"/>;
+    /// small images are capped at this scale so fit never upscales past 100 %.
+    /// The RTX VSR override never changes the layout source pixels, so this can
+    /// use the regular document-based actual-size scale even while it is active.
+    /// </summary>
+    private double CalculateFitModeActualSizeScale() => CalculateActualSizeZoomScale();
 
     private void CenterScrollableImage()
     {

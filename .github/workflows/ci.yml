@@ -34,7 +34,7 @@ jobs:
         shell: pwsh
         run: |
           @(
-            '.\HdrImageViewer.csproj',
+            '.\qHdrImageViewer.csproj',
             '.\tests\HdrImageViewer.Tests\HdrImageViewer.Tests.csproj',
             '.\tests\HdrImageViewer.WindowsTests\HdrImageViewer.WindowsTests.csproj',
             '.\tests\HdrImageViewer.IntegrationTests\HdrImageViewer.IntegrationTests.csproj'
@@ -63,7 +63,7 @@ jobs:
         shell: pwsh
         run: |
           @(
-            '.\HdrImageViewer.csproj',
+            '.\qHdrImageViewer.csproj',
             '.\tests\HdrImageViewer.Tests\HdrImageViewer.Tests.csproj',
             '.\tests\HdrImageViewer.WindowsTests\HdrImageViewer.WindowsTests.csproj',
             '.\tests\HdrImageViewer.IntegrationTests\HdrImageViewer.IntegrationTests.csproj'
@@ -75,13 +75,13 @@ jobs:
       - name: Publish portable x64 smoke artifact
         shell: pwsh
         run: |
-          dotnet publish .\HdrImageViewer.csproj -c Release -p:Platform=x64 -p:PortableBuild=true -p:PublishDir=artifacts\ci-portable\ --nologo
+          dotnet publish .\qHdrImageViewer.csproj -c Release -p:Platform=x64 -p:PortableBuild=true -p:PublishDir=artifacts\ci-portable\ --nologo
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           @(
-            'HdrImageViewer.exe',
+            'qHdrImageViewer.exe',
             'App.xbf',
             'MainWindow.xbf',
-            'HdrImageViewer.pri',
+            'qHdrImageViewer.pri',
             'Pages\HomePage.xbf',
             'Assets\AppIcon.ico'
           ) | ForEach-Object {

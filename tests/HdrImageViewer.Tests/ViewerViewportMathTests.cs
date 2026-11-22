@@ -66,6 +66,112 @@ public sealed class ViewerViewportMathTests
     }
 
     [Theory]
+    [InlineData(4.0, 1.0)]
+    [InlineData(1.0, 1.0)]
+    [InlineData(0.4, 0.4)]
+    [InlineData(0.25, 0.25)]
+    public void CalculateFitZoomTargetScale_NeverUpscalesPastActualSize(double actualSizeScale, double expected)
+    {
+        Assert.Equal(expected, ViewerViewportMath.CalculateFitZoomTargetScale(actualSizeScale), 6);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    public void CalculateFitZoomTargetScale_FallsBackToFullFitForInvalidScale(double actualSizeScale)
+    {
+        Assert.Equal(1.0, ViewerViewportMath.CalculateFitZoomTargetScale(actualSizeScale), 6);
+    }
+
+    [Fact]
+    public void CalculateCappedFitSize_ShowsSmallImageAtActualSize()
+    {
+        // A 400x300 image in a 1000x600 viewport fits at 800x600 (200 %), but
+        // the actual-size scale is 0.5 so fit mode must show it at 400x300.
+        var size = ViewerViewportMath.CalculateCappedFitSize(1000, 600, 4.0 / 3.0, 0.5);
+
+        Assert.Equal(400, size.Width, 6);
+        Assert.Equal(300, size.Height, 6);
+        var fit = ViewerViewportMath.CalculateFitSize(1000, 600, 4.0 / 3.0);
+        Assert.Equal(100, ViewerViewportMath.CalculateZoomPercentage(size.Width, fit.Width, 0.5), 6);
+    }
+
+    [Fact]
+    public void CalculateCappedFitSize_KeepsFullFitForLargeImage()
+    {
+        var size = ViewerViewportMath.CalculateCappedFitSize(1000, 600, 4.0 / 3.0, 2.5);
+
+        Assert.Equal(800, size.Width, 6);
+        Assert.Equal(600, size.Height, 6);
+    }
+
+    [Theory]
+    // Contained axes get one viewport of drag slack on each side.
+    [InlineData(1000, 600, 400, 300, 1600, 900)]
+    // An image larger than the viewport keeps the image-sized scroll extent.
+    [InlineData(1000, 600, 1600, 1200, 1600, 1200)]
+    // Mixed: wide image, contained height.
+    [InlineData(1000, 600, 1600, 300, 1600, 900)]
+    [InlineData(1000.5, 600.5, 1000.5, 600.5, 1000.5, 600.5)]
+    public void CalculateImageViewportSize_AddsDragSlackOnlyForContainedAxes(
+        double previewWidth,
+        double previewHeight,
+        double imageWidth,
+        double imageHeight,
+        double expectedWidth,
+        double expectedHeight)
+    {
+        var size = ViewerViewportMath.CalculateImageViewportSize(
+            previewWidth, previewHeight, imageWidth, imageHeight);
+
+        Assert.Equal(expectedWidth, size.Width, 6);
+        Assert.Equal(expectedHeight, size.Height, 6);
+    }
+
+    [Fact]
+    public void CalculateImageViewportSize_ReturnsImageExtentBeforeTheViewportIsMeasured()
+    {
+        var size = ViewerViewportMath.CalculateImageViewportSize(0, 0, 400, 300);
+
+        Assert.Equal(400, size.Width, 6);
+        Assert.Equal(300, size.Height, 6);
+    }
+
+    [Theory]
+    [InlineData(400, 1000, 300)]
+    [InlineData(1000, 1000, 0)]
+    [InlineData(1600, 1000, 0)]
+    [InlineData(0, 1000, 0)]
+    public void CalculateContainedImageCenterOffset_CentersInsideTheSlackExtent(
+        double imageExtent, double viewportExtent, double expected)
+    {
+        Assert.Equal(expected, ViewerViewportMath.CalculateContainedImageCenterOffset(imageExtent, viewportExtent), 6);
+    }
+
+    [Theory]
+    [InlineData(300.0, 1.0, 300.0)]
+    [InlineData(300.4, 1.0, 300.0)]
+    [InlineData(300.5, 1.0, 301.0)]
+    [InlineData(10.2, 1.5, 10.0)]
+    [InlineData(10.4, 1.5, 32.0 / 3.0)]
+    public void SnapToPhysicalPixel_RoundsToWholeDisplayPixels(
+        double logicalOffset, double compositionScale, double expected)
+    {
+        Assert.Equal(expected, ViewerViewportMath.SnapToPhysicalPixel(logicalOffset, compositionScale), 6);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(double.NaN)]
+    public void SnapToPhysicalPixel_KeepsInvalidScaleAndOffset(double compositionScale)
+    {
+        Assert.Equal(300.4, ViewerViewportMath.SnapToPhysicalPixel(300.4, compositionScale), 6);
+    }
+
+    [Theory]
     [InlineData(500, 1000, 0)]
     [InlineData(1000, 1000, 0)]
     [InlineData(2000, 1000, 1)]
@@ -300,7 +406,62 @@ public sealed class ViewerViewportMathTests
         Assert.Equal(1.0f, layout.ScaleY, 5);
         Assert.Equal(0.0f, layout.OffsetX, 5);
         Assert.Equal(0.0f, layout.OffsetY, 5);
+        // The centered position is explicit now that drag-to-pan moves the host.
+        Assert.Equal(100, layout.HostLeft, 6);
+        Assert.Equal(0, layout.HostTop, 6);
         Assert.False(layout.CoversPreview(1000, 600));
+    }
+
+    [Fact]
+    public void CalculateSwapChainHostLayout_PlacesContainedImageAtThePannedPosition()
+    {
+        // 400x300 image inside a 1000x600 preview: the content extent adds the
+        // drag slack (1600x900), so the centered scroll offset is (300, 150).
+        var centered = ViewerViewportMath.CalculateSwapChainHostLayout(
+            previewWidth: 1000, previewHeight: 600,
+            imageWidth: 400, imageHeight: 300,
+            contentWidth: 1600, contentHeight: 900,
+            scrollX: 300, scrollY: 150);
+        Assert.Equal(400, centered.HostWidth, 6);
+        Assert.Equal(300, centered.HostHeight, 6);
+        Assert.Equal(300, centered.HostLeft, 6);
+        Assert.Equal(150, centered.HostTop, 6);
+
+        // Dragged all the way to the top-left edge of the slack.
+        var bottomRight = ViewerViewportMath.CalculateSwapChainHostLayout(
+            previewWidth: 1000, previewHeight: 600,
+            imageWidth: 400, imageHeight: 300,
+            contentWidth: 1600, contentHeight: 900,
+            scrollX: 600, scrollY: 300);
+        Assert.Equal(0, bottomRight.HostLeft, 6);
+        Assert.Equal(0, bottomRight.HostTop, 6);
+
+        // Dragged all the way to the bottom-right edge of the slack.
+        var topLeft = ViewerViewportMath.CalculateSwapChainHostLayout(
+            previewWidth: 1000, previewHeight: 600,
+            imageWidth: 400, imageHeight: 300,
+            contentWidth: 1600, contentHeight: 900,
+            scrollX: 0, scrollY: 0);
+        Assert.Equal(600, topLeft.HostLeft, 6);
+        Assert.Equal(300, topLeft.HostTop, 6);
+    }
+
+    [Fact]
+    public void CalculateSwapChainHostLayout_DragSlackNeverMovesHostOutsideThePreview()
+    {
+        // Scroll offsets are clamped by the ScrollViewer, but a frame delivered
+        // right after a layout change can still carry a stale offset.
+        for (var scrollX = -200.0; scrollX <= 800.0; scrollX += 100.0)
+        {
+            var layout = ViewerViewportMath.CalculateSwapChainHostLayout(
+                previewWidth: 1000, previewHeight: 600,
+                imageWidth: 400, imageHeight: 300,
+                contentWidth: 1600, contentHeight: 900,
+                scrollX: scrollX, scrollY: scrollX * 0.5);
+
+            Assert.InRange(layout.HostLeft, 0, Math.Max(0, 1000 - layout.HostWidth));
+            Assert.InRange(layout.HostTop, 0, Math.Max(0, 600 - layout.HostHeight));
+        }
     }
 
     [Fact]
@@ -322,6 +483,8 @@ public sealed class ViewerViewportMathTests
         Assert.Equal(1.4f, layout.ScaleY, 5);
         Assert.Equal(0.0f, layout.OffsetX, 5);
         Assert.Equal(0.0f, layout.OffsetY, 5);
+        Assert.Equal(100, layout.HostLeft, 6);
+        Assert.Equal(0, layout.HostTop, 6);
         Assert.False(layout.CoversPreview(1000, 500));
     }
 
@@ -344,6 +507,8 @@ public sealed class ViewerViewportMathTests
         Assert.Equal(2.0f, layout.ScaleY, 5);
         Assert.Equal(-0.3f, layout.OffsetX, 5);
         Assert.Equal(-1.0f / 3.0f, layout.OffsetY, 5);
+        Assert.Equal(0, layout.HostLeft, 6);
+        Assert.Equal(0, layout.HostTop, 6);
         Assert.True(layout.CoversPreview(1000, 600));
     }
 

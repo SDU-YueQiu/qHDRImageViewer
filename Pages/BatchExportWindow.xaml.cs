@@ -45,6 +45,8 @@ public sealed partial class BatchExportWindow : Window
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(ClearButton, Localization.GetString("BatchExportClearToolTip"));
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(QueueList, Localization.GetString("BatchExportQueueList"));
 
+        ApplyRuntimeSettings();
+
         BatchFormatItemSdrPng.Content = Localization.GetString("BatchFormatSdrPng");
         BatchFormatItemSdrJpeg.Content = Localization.GetString("BatchFormatSdrJpeg");
         BatchFormatItemGainMapJpeg.Content = Localization.GetString("BatchFormatGainMapJpeg");
@@ -89,6 +91,7 @@ public sealed partial class BatchExportWindow : Window
             return;
         }
 
+        ApplyRuntimeSettings();
         if (DispatcherQueue.HasThreadAccess)
         {
             ApplyTheme(AppSettingsService.Current.Theme);
@@ -103,6 +106,13 @@ public sealed partial class BatchExportWindow : Window
                 }
             });
         }
+    }
+
+    private void ApplyRuntimeSettings()
+    {
+        // BatchExportMaxRetries is an attempt count here so the default of 1
+        // preserves the historical single attempt.
+        _queue.MaxAttempts = Math.Max(1, AppSettingsService.Current.BatchExportMaxRetries);
     }
 
     private void WindowRoot_ActualThemeChanged(FrameworkElement sender, object args) => UpdateCaptionTheme();

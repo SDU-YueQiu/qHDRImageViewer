@@ -88,7 +88,7 @@ public sealed partial class HomePage
 
     private void ScheduleAnalysisAutoRefresh()
     {
-        if (!IsAnalysisOrGamutTabVisible())
+        if (!_settings.AnalysisAutoRefreshEnabled || !IsAnalysisOrGamutTabVisible())
         {
             _analysisAutoRefreshTimer?.Stop();
             return;

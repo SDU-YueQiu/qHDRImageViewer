@@ -241,15 +241,49 @@ public sealed partial class HomePage
         var coversPreview = hostLayout.CoversPreview(
             PreviewSurface.ActualWidth,
             PreviewSurface.ActualHeight);
-        if (coversPreview && !_swapChainHostContained)
+
+        if (coversPreview)
         {
+            if (!_swapChainHostContained)
+            {
+                return;
+            }
+
+            _isUpdatingSwapChainHostLayout = true;
+            try
+            {
+                HdrSwapChainHost.HorizontalAlignment = HorizontalAlignment.Stretch;
+                HdrSwapChainHost.VerticalAlignment = VerticalAlignment.Stretch;
+                HdrSwapChainHost.Margin = new Thickness(0);
+                HdrSwapChainHost.ClearValue(FrameworkElement.WidthProperty);
+                HdrSwapChainHost.ClearValue(FrameworkElement.HeightProperty);
+                _swapChainHostContained = false;
+                if (!_isZoomPreviewActive) HdrSwapChainHost.UpdateLayout();
+            }
+            finally
+            {
+                _isUpdatingSwapChainHostLayout = false;
+            }
+
             return;
         }
 
-        if (!coversPreview
-            && _swapChainHostContained
+        // A contained image keeps its image-sized host; the panned scroll
+        // offset moves the host position instead of recentering it. Snapping
+        // the position to whole physical pixels keeps the 1:1 swap-chain
+        // content crisp while it is dragged.
+        var hostLeft = ViewerViewportMath.SnapToPhysicalPixel(
+            hostLayout.HostLeft,
+            HdrSwapChainHost.CompositionScaleX);
+        var hostTop = ViewerViewportMath.SnapToPhysicalPixel(
+            hostLayout.HostTop,
+            HdrSwapChainHost.CompositionScaleY);
+        var currentMargin = HdrSwapChainHost.Margin;
+        if (_swapChainHostContained
             && Math.Abs(HdrSwapChainHost.Width - hostLayout.HostWidth) <= 0.5
-            && Math.Abs(HdrSwapChainHost.Height - hostLayout.HostHeight) <= 0.5)
+            && Math.Abs(HdrSwapChainHost.Height - hostLayout.HostHeight) <= 0.5
+            && Math.Abs(currentMargin.Left - hostLeft) <= 0.01
+            && Math.Abs(currentMargin.Top - hostTop) <= 0.01)
         {
             return;
         }
@@ -257,23 +291,12 @@ public sealed partial class HomePage
         _isUpdatingSwapChainHostLayout = true;
         try
         {
-            if (coversPreview)
-            {
-                HdrSwapChainHost.HorizontalAlignment = HorizontalAlignment.Stretch;
-                HdrSwapChainHost.VerticalAlignment = VerticalAlignment.Stretch;
-                HdrSwapChainHost.ClearValue(FrameworkElement.WidthProperty);
-                HdrSwapChainHost.ClearValue(FrameworkElement.HeightProperty);
-                _swapChainHostContained = false;
-            }
-            else
-            {
-                HdrSwapChainHost.HorizontalAlignment = HorizontalAlignment.Center;
-                HdrSwapChainHost.VerticalAlignment = VerticalAlignment.Center;
-                HdrSwapChainHost.Width = hostLayout.HostWidth;
-                HdrSwapChainHost.Height = hostLayout.HostHeight;
-                _swapChainHostContained = true;
-            }
-
+            HdrSwapChainHost.HorizontalAlignment = HorizontalAlignment.Left;
+            HdrSwapChainHost.VerticalAlignment = VerticalAlignment.Top;
+            HdrSwapChainHost.Margin = new Thickness(hostLeft, hostTop, 0, 0);
+            HdrSwapChainHost.Width = hostLayout.HostWidth;
+            HdrSwapChainHost.Height = hostLayout.HostHeight;
+            _swapChainHostContained = true;
             if (!_isZoomPreviewActive) HdrSwapChainHost.UpdateLayout();
         }
         finally

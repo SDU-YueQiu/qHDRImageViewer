@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Reflection;
 using HdrImageViewer.Services;
@@ -39,7 +39,7 @@ public sealed class MrtResourceLoadingTests
         var baseDir = AppContext.BaseDirectory;
         return File.Exists(Path.Combine(baseDir, "resources.pri"))
             ? Path.Combine(baseDir, "resources.pri")
-            : Path.Combine(baseDir, "HdrImageViewer.pri");
+            : Path.Combine(baseDir, "qHdrImageViewer.pri");
     }
 
     [Fact]

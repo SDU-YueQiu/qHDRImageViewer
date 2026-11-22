@@ -26,15 +26,17 @@ public static class JxlNativeDecoder
     private const int JXL_DEC_SUCCESS = 0;
     private const int JXL_DEC_NEED_MORE_INPUT = 2;
     private const int JXL_DEC_NEED_IMAGE_OUT_BUFFER = 5;
+    private const int JXL_DEC_BOX_NEED_MORE_OUTPUT = 7;
     private const int JXL_DEC_BASIC_INFO = 0x40;
     private const int JXL_DEC_COLOR_ENCODING = 0x100;
     private const int JXL_DEC_FULL_IMAGE = 0x1000;
     private const int JXL_DEC_BOX = 0x4000;
+    private const int JXL_DEC_BOX_COMPLETE = 0x10000;
 
     // JxlDataType / JxlEndianness values from libjxl types.h.
     private const int JXL_TYPE_UINT8 = 2;
     private const int JXL_TYPE_UINT16 = 3;
-    private const int JXL_TYPE_FLOAT16 = 4;
+    private const int JXL_TYPE_FLOAT16 = 5;
     private const int JXL_LITTLE_ENDIAN = 1;
 
     // JxlColorProfileTarget values from libjxl color_encoding.h / decode.h.
@@ -60,6 +62,8 @@ public static class JxlNativeDecoder
 
     private const int MaxProbeCodestreamBytes = 1024 * 1024;
     private const int MaxIccProfileBytes = 4 * 1024 * 1024;
+    private const int MaxGainMapBoxBytes = 64 * 1024 * 1024;
+    private const int GainMapBoxInitialCapacity = 64 * 1024;
     private const uint JhgmBoxFourCcLittleEndian = 0x6D67686Au; // 'j', 'h', 'g', 'm'
 
     private static readonly object LoadLock = new();
@@ -244,6 +248,139 @@ public static class JxlNativeDecoder
         catch
         {
             return null;
+        }
+    }
+
+    /// <summary>
+    /// Returns the decompressed payload of the JPEG XL container's jhgm
+    /// gain-map box, or null when the file has no readable jhgm box. The box is
+    /// read through libjxl so that Brotli-compressed ("brob") metadata boxes are
+    /// decompressed transparently instead of being mistaken for missing.
+    /// </summary>
+    public static byte[]? TryReadGainMapBox(string path)
+    {
+        try
+        {
+            EnsureNativeLibrariesLoaded();
+            var data = File.ReadAllBytes(path);
+            return data.Length == 0
+                ? null
+                : TryReadBoxPayload(data, JhgmBoxFourCcLittleEndian, CancellationToken.None);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static byte[]? TryReadBoxPayload(byte[] data, uint boxType, CancellationToken cancellationToken)
+    {
+        var decoder = JxlDecoderCreate(IntPtr.Zero);
+        if (decoder == IntPtr.Zero)
+        {
+            return null;
+        }
+
+        var inputHandle = GCHandle.Alloc(data, GCHandleType.Pinned);
+        GCHandle boxHandle = default;
+        byte[]? boxBuffer = null;
+        var boxOffset = 0;
+        var boxWritten = 0;
+        try
+        {
+            if (JxlDecoderSetDecompressBoxes(decoder, 1) != JXL_DEC_SUCCESS
+                || JxlDecoderSubscribeEvents(decoder, JXL_DEC_BOX | JXL_DEC_BOX_COMPLETE) != JXL_DEC_SUCCESS
+                || JxlDecoderSetInput(decoder, inputHandle.AddrOfPinnedObject(), (nuint)data.Length) != JXL_DEC_SUCCESS)
+            {
+                return null;
+            }
+
+            JxlDecoderCloseInput(decoder);
+            while (true)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var status = JxlDecoderProcessInput(decoder);
+                switch (status)
+                {
+                    case JXL_DEC_BOX:
+                        if (JxlDecoderGetBoxType(decoder, out var currentType, 1) != JXL_DEC_SUCCESS
+                            || currentType != boxType)
+                        {
+                            break;
+                        }
+
+                        boxBuffer = new byte[GainMapBoxInitialCapacity];
+                        boxHandle = GCHandle.Alloc(boxBuffer, GCHandleType.Pinned);
+                        boxOffset = 0;
+                        boxWritten = 0;
+                        if (JxlDecoderSetBoxBuffer(decoder, boxHandle.AddrOfPinnedObject(), (nuint)boxBuffer.Length) != JXL_DEC_SUCCESS)
+                        {
+                            return null;
+                        }
+
+                        break;
+
+                    case JXL_DEC_BOX_NEED_MORE_OUTPUT:
+                        if (boxBuffer is null || !boxHandle.IsAllocated)
+                        {
+                            return null;
+                        }
+
+                        boxWritten += (boxBuffer.Length - boxOffset) - (int)JxlDecoderReleaseBoxBuffer(decoder);
+                        if (boxBuffer.Length >= MaxGainMapBoxBytes)
+                        {
+                            return null;
+                        }
+
+                        var grownBuffer = new byte[Math.Min(boxBuffer.Length * 2, MaxGainMapBoxBytes)];
+                        Array.Copy(boxBuffer, grownBuffer, boxWritten);
+                        boxHandle.Free();
+                        boxBuffer = grownBuffer;
+                        boxOffset = boxWritten;
+                        boxHandle = GCHandle.Alloc(boxBuffer, GCHandleType.Pinned);
+                        if (JxlDecoderSetBoxBuffer(
+                                decoder,
+                                IntPtr.Add(boxHandle.AddrOfPinnedObject(), boxOffset),
+                                (nuint)(boxBuffer.Length - boxOffset)) != JXL_DEC_SUCCESS)
+                        {
+                            return null;
+                        }
+
+                        break;
+
+                    case JXL_DEC_BOX_COMPLETE:
+                    case JXL_DEC_SUCCESS:
+                        if (boxBuffer is null || !boxHandle.IsAllocated)
+                        {
+                            return null;
+                        }
+
+                        boxWritten += (boxBuffer.Length - boxOffset) - (int)JxlDecoderReleaseBoxBuffer(decoder);
+                        boxHandle.Free();
+                        boxHandle = default;
+                        if (boxWritten <= 0 || boxWritten > boxBuffer.Length)
+                        {
+                            return null;
+                        }
+
+                        var payload = new byte[boxWritten];
+                        Array.Copy(boxBuffer, payload, boxWritten);
+                        return payload;
+
+                    default:
+                        return null;
+                }
+            }
+        }
+        finally
+        {
+            JxlDecoderDestroy(decoder);
+            if (boxHandle.IsAllocated)
+            {
+                boxHandle.Free();
+            }
+
+            inputHandle.Free();
         }
     }
 
@@ -469,7 +606,8 @@ public static class JxlNativeDecoder
                 IntensityTargetNits: intensityTarget,
                 MinNits: minNits,
                 Summary: summary,
-                HasGainMapBox: hasGainMapBox);
+                HasGainMapBox: hasGainMapBox,
+                UsesOriginalProfile: basicInfo.UsesOriginalProfile != 0);
         }
         finally
         {
@@ -523,9 +661,7 @@ public static class JxlNativeDecoder
                 ThrowOnError(JxlDecoderSetUnpremultiplyAlpha(decoder, 1), "JxlDecoderSetUnpremultiplyAlpha");
             }
 
-            var subscribeColorEncoding = _decoderVersion >= 9000
-                && !forceRawRgba16
-                && transfer is DecodedBitmapTransfer.Sdr or DecodedBitmapTransfer.Bt709 or DecodedBitmapTransfer.LinearSceneScRgb;
+            var subscribeColorEncoding = _decoderVersion >= 9000 && !forceRawRgba16;
             var events = JXL_DEC_BASIC_INFO | JXL_DEC_FULL_IMAGE | (subscribeColorEncoding ? JXL_DEC_COLOR_ENCODING : 0);
             ThrowOnError(JxlDecoderSubscribeEvents(decoder, events), "JxlDecoderSubscribeEvents");
             ThrowOnError(JxlDecoderSetInput(decoder, inputHandle.AddrOfPinnedObject(), (nuint)encodedLength), "JxlDecoderSetInput");
@@ -607,6 +743,10 @@ public static class JxlNativeDecoder
                             format.DataType = use16BitSdr ? JXL_TYPE_UINT16 : JXL_TYPE_UINT8;
                             format.Endianness = format.DataType == JXL_TYPE_UINT8 ? 0 : JXL_LITTLE_ENDIAN;
                             colorManagedToSrgb = !use16BitSdr && !IsWideGamut(resolvedGamut) && resolvedTransfer == DecodedBitmapTransfer.Sdr;
+                        }
+                        else
+                        {
+                            ResolveHdrColorEncoding(decoder, resolvedTransfer, usesOriginalProfile, ref resolvedGamut);
                         }
 
                         break;
@@ -713,42 +853,70 @@ public static class JxlNativeDecoder
         out string transferFunction,
         out string colorPrimaries)
     {
-        if (JxlDecoderGetColorAsEncodedProfile(decoder, JXL_COLOR_PROFILE_TARGET_ORIGINAL, out var profile) == JXL_DEC_SUCCESS
-            || JxlDecoderGetColorAsEncodedProfile(decoder, JXL_COLOR_PROFILE_TARGET_DATA, out profile) == JXL_DEC_SUCCESS)
+        if (JxlDecoderGetColorAsEncodedProfile(decoder, JXL_COLOR_PROFILE_TARGET_ORIGINAL, out var originalProfile) == JXL_DEC_SUCCESS)
         {
-            transferFunction = DescribeTransferFunction(profile);
-            colorPrimaries = DescribePrimaries(profile);
+            transferFunction = DescribeTransferFunction(originalProfile);
+            colorPrimaries = DescribePrimaries(originalProfile);
             return;
         }
 
-        if (TryReadIccProfile(decoder, JXL_COLOR_PROFILE_TARGET_ORIGINAL, out var iccBytes))
+        // The original profile is an ICC profile (or absent). Inspect that ICC
+        // profile before the DATA target: for XYB images with an attached ICC
+        // profile libjxl reports the DATA color encoding as its default output
+        // (scene-linear sRGB for HDR), which is not the image's transfer/gamut.
+        if (TryReadIccProfile(decoder, JXL_COLOR_PROFILE_TARGET_ORIGINAL, out var originalIcc))
         {
-            var iccGamut = IccColorProfileDetector.DetectColorGamut(iccBytes);
-            var iccTransfer = IccColorProfileDetector.DetectTransferCharacteristics(iccBytes);
-            var iccDesc = IccColorProfileDetector.ExtractProfileDescription(iccBytes);
-
-            transferFunction = iccTransfer switch
+            var iccTransfer = IccColorProfileDetector.DetectTransferCharacteristics(originalIcc);
+            if (iccTransfer is 16 or 18)
             {
-                16 => "PQ / SMPTE ST 2084",
-                18 => "HLG",
-                1 => "BT.709",
-                _ => basicInfo.ExponentBitsPerSample > 0 ? "linear" : "sRGB",
-            };
+                transferFunction = iccTransfer == 16 ? "PQ / SMPTE ST 2084" : "HLG";
+                colorPrimaries = DescribeIccPrimaries(originalIcc);
+                return;
+            }
+        }
 
-            colorPrimaries = iccGamut switch
-            {
-                GainMapColorGamut.Bt2100 => "Rec.2100 / BT.2020",
-                GainMapColorGamut.DisplayP3 => "Display P3",
-                GainMapColorGamut.AdobeRgb => "Adobe RGB (1998)",
-                GainMapColorGamut.ProPhoto => "ProPhoto RGB",
-                GainMapColorGamut.Bt709 => "sRGB / BT.709",
-                _ => !string.IsNullOrWhiteSpace(iccDesc) ? iccDesc : "ICC profile",
-            };
+        if (JxlDecoderGetColorAsEncodedProfile(decoder, JXL_COLOR_PROFILE_TARGET_DATA, out var dataProfile) == JXL_DEC_SUCCESS)
+        {
+            transferFunction = DescribeTransferFunction(dataProfile);
+            colorPrimaries = DescribePrimaries(dataProfile);
+            return;
+        }
+
+        if (TryReadIccProfile(decoder, JXL_COLOR_PROFILE_TARGET_DATA, out var dataIcc))
+        {
+            transferFunction = DescribeIccTransfer(dataIcc, basicInfo);
+            colorPrimaries = DescribeIccPrimaries(dataIcc);
             return;
         }
 
         transferFunction = basicInfo.ExponentBitsPerSample > 0 ? "linear" : "sRGB";
         colorPrimaries = "sRGB / BT.709";
+    }
+
+    private static string DescribeIccPrimaries(byte[] iccBytes)
+    {
+        var iccGamut = IccColorProfileDetector.DetectColorGamut(iccBytes);
+        var iccDesc = IccColorProfileDetector.ExtractProfileDescription(iccBytes);
+        return iccGamut switch
+        {
+            GainMapColorGamut.Bt2100 => "Rec.2100 / BT.2020",
+            GainMapColorGamut.DisplayP3 => "Display P3",
+            GainMapColorGamut.AdobeRgb => "Adobe RGB (1998)",
+            GainMapColorGamut.ProPhoto => "ProPhoto RGB",
+            GainMapColorGamut.Bt709 => "sRGB / BT.709",
+            _ => !string.IsNullOrWhiteSpace(iccDesc) ? iccDesc : "ICC profile",
+        };
+    }
+
+    private static string DescribeIccTransfer(byte[] iccBytes, in JxlBasicInfo basicInfo)
+    {
+        return IccColorProfileDetector.DetectTransferCharacteristics(iccBytes) switch
+        {
+            16 => "PQ / SMPTE ST 2084",
+            18 => "HLG",
+            1 => "BT.709",
+            _ => basicInfo.ExponentBitsPerSample > 0 ? "linear" : "sRGB",
+        };
     }
 
     private static string DescribeTransferFunction(in JxlColorEncoding profile)
@@ -873,6 +1041,69 @@ public static class JxlNativeDecoder
         }
 
         throw new NotSupportedException("JPEG XL embedded ICC profile requires external WIC color management.");
+    }
+
+    /// <summary>
+    /// Makes sure the decoder emits samples in the PQ/HLG encoding the renderer
+    /// is told about. libjxl already outputs the original profile when it is a
+    /// structured (non-ICC) encoding; for XYB images whose original profile is
+    /// an ICC profile it otherwise falls back to scene-linear sRGB, which the
+    /// renderer would wrongly feed through an inverse PQ/HLG EOTF.
+    /// </summary>
+    private static void ResolveHdrColorEncoding(
+        IntPtr decoder,
+        DecodedBitmapTransfer transfer,
+        bool usesOriginalProfile,
+        ref GainMapColorGamut gamut)
+    {
+        if (JxlDecoderGetColorAsEncodedProfile(decoder, JXL_COLOR_PROFILE_TARGET_ORIGINAL, out _) == JXL_DEC_SUCCESS
+            || usesOriginalProfile)
+        {
+            // Structured profile, or an image stored in its original ICC profile:
+            // the decoder's default output already matches the probed transfer.
+            gamut = DetectDataColorGamut(decoder, gamut);
+            return;
+        }
+
+        var preferred = BuildHdrColorEncoding(transfer);
+        var status = JxlDecoderSetPreferredColorProfile(decoder, in preferred);
+        if (status != JXL_DEC_SUCCESS)
+        {
+            throw new NotSupportedException(
+                $"libjxl could not convert this HDR JPEG XL image to the requested {DescribeTransferFunction(preferred)} output (status {status}).");
+        }
+
+        if (JxlDecoderGetColorAsEncodedProfile(decoder, JXL_COLOR_PROFILE_TARGET_DATA, out var dataProfile) != JXL_DEC_SUCCESS
+            || dataProfile.TransferFunction != preferred.TransferFunction)
+        {
+            throw new NotSupportedException("libjxl did not honor the requested HDR JPEG XL output color encoding.");
+        }
+
+        var mapped = MapGamutFromColorEncoding(dataProfile);
+        gamut = mapped == GainMapColorGamut.Unknown ? GainMapColorGamut.Bt2100 : mapped;
+    }
+
+    private static JxlColorEncoding BuildHdrColorEncoding(DecodedBitmapTransfer transfer)
+    {
+        return new JxlColorEncoding
+        {
+            ColorSpace = JXL_COLOR_SPACE_RGB,
+            WhitePoint = JXL_WHITE_POINT_D65,
+            WhitePointX = 0.3127,
+            WhitePointY = 0.3290,
+            Primaries = JXL_PRIMARIES_2100,
+            PrimariesRedX = 0.708,
+            PrimariesRedY = 0.292,
+            PrimariesGreenX = 0.170,
+            PrimariesGreenY = 0.797,
+            PrimariesBlueX = 0.131,
+            PrimariesBlueY = 0.046,
+            TransferFunction = transfer == DecodedBitmapTransfer.Hlg
+                ? JXL_TRANSFER_FUNCTION_HLG
+                : JXL_TRANSFER_FUNCTION_PQ,
+            Gamma = 1.0,
+            RenderingIntent = JXL_RENDERING_INTENT_RELATIVE,
+        };
     }
 
     private static GainMapColorGamut MapGamutFromColorEncoding(in JxlColorEncoding profile)
@@ -1167,6 +1398,12 @@ public static class JxlNativeDecoder
 
     [DllImport(JxlLibraryName, CallingConvention = CallingConvention.Cdecl)]
     private static extern int JxlDecoderGetBoxType(IntPtr decoder, out uint boxType, int decompressed);
+
+    [DllImport(JxlLibraryName, CallingConvention = CallingConvention.Cdecl)]
+    private static extern int JxlDecoderSetBoxBuffer(IntPtr decoder, IntPtr data, nuint size);
+
+    [DllImport(JxlLibraryName, CallingConvention = CallingConvention.Cdecl)]
+    private static extern nuint JxlDecoderReleaseBoxBuffer(IntPtr decoder);
 
     [DllImport(JxlLibraryName, CallingConvention = CallingConvention.Cdecl)]
     private static extern int JxlDecoderGetColorAsEncodedProfile(IntPtr decoder, int target, out JxlColorEncoding colorEncoding);

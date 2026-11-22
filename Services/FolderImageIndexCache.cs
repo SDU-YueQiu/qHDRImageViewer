@@ -4,7 +4,15 @@ namespace HdrImageViewer.Services;
 
 internal sealed class FolderImageIndexCache : IDisposable
 {
-    private const int MaximumCachedDirectories = 4;
+    public const int DefaultMaximumCachedDirectories = 4;
+
+    /// <summary>
+    /// Gets or sets the number of directories whose image lists stay cached.
+    /// The default preserves the historical four-directory window; the settings
+    /// page drives this at startup and on change.
+    /// </summary>
+    public static int MaximumCachedDirectories { get; set; } = DefaultMaximumCachedDirectories;
+
     private readonly object _gate = new();
     private readonly Dictionary<string, DirectoryEntry> _entries =
         new(StringComparer.OrdinalIgnoreCase);
@@ -208,9 +216,10 @@ internal sealed class FolderImageIndexCache : IDisposable
     private void Trim(string activeDirectory)
     {
         List<DirectoryEntry> removed = [];
+        var maximumCachedDirectories = Math.Max(1, MaximumCachedDirectories);
         lock (_gate)
         {
-            if (_entries.Count <= MaximumCachedDirectories)
+            if (_entries.Count <= maximumCachedDirectories)
             {
                 return;
             }
@@ -221,7 +230,7 @@ internal sealed class FolderImageIndexCache : IDisposable
                              activeDirectory,
                              StringComparison.OrdinalIgnoreCase))
                          .OrderBy(entry => entry.LastAccessTicks)
-                         .Take(_entries.Count - MaximumCachedDirectories)
+                         .Take(_entries.Count - maximumCachedDirectories)
                          .ToList())
             {
                 if (_entries.Remove(entry.Directory))

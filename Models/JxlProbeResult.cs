@@ -10,7 +10,8 @@ public sealed record JxlProbeResult(
     double? IntensityTargetNits,
     double? MinNits,
     string Summary,
-    bool HasGainMapBox = false)
+    bool HasGainMapBox = false,
+    bool UsesOriginalProfile = false)
 {
     public bool IsHdrTransfer =>
         TransferFunction.Contains("PQ", StringComparison.OrdinalIgnoreCase)

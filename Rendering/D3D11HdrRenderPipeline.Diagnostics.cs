@@ -28,7 +28,7 @@ public sealed partial class D3D11HdrRenderPipeline
     private string BuildLayoutSummary()
     {
         var layout = GetCurrentImageLayout();
-        return $"source {_contentPixelWidth}x{_contentPixelHeight}, fit {layout.X:0.###}x{layout.Y:0.###}+{layout.Z:0.###},{layout.W:0.###}";
+        return $"source {_contentPixelWidth}x{_contentPixelHeight}, fit {layout.X:0.###}x{layout.Y:0.###}+{layout.Z:0.###},{layout.W:0.###}, filter upscale {_zoomInterpolationUpscale}/downscale {_zoomDownscale}";
     }
 
     private string BuildGainMapSummary()

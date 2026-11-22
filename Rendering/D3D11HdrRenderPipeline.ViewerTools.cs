@@ -183,6 +183,7 @@ public sealed partial class D3D11HdrRenderPipeline
             || _pixelProbeStagingTexture is null
             || _gainMapVertexShader is null
             || _linearClampSampler is null
+            || _pointClampSampler is null
             || _gainMapConstantsBuffer is null
             || _primaryTextureView is null
             || _document is null)
@@ -233,7 +234,7 @@ public sealed partial class D3D11HdrRenderPipeline
                 _context.PSSetShaderResource(0, _primaryTextureView);
             }
 
-            _context.PSSetSampler(0, _linearClampSampler);
+            BindZoomFilterSamplers();
             _context.PSSetConstantBuffer(0, _gainMapConstantsBuffer);
             _context.Draw(3, 0);
             _context.PSUnsetShaderResources(0, 2);
@@ -608,6 +609,7 @@ public sealed partial class D3D11HdrRenderPipeline
             || _document is null
             || _gainMapVertexShader is null
             || _linearClampSampler is null
+            || _pointClampSampler is null
             || _gainMapConstantsBuffer is null
             || _primaryTextureView is null
             || _pixelWidth <= 0
@@ -663,7 +665,7 @@ public sealed partial class D3D11HdrRenderPipeline
                 _context.PSSetShaderResource(0, _primaryTextureView);
             }
 
-            _context.PSSetSampler(0, _linearClampSampler);
+            BindZoomFilterSamplers();
             _context.PSSetConstantBuffer(0, _gainMapConstantsBuffer);
             _viewerToolsConstants = new Vector4(0.0f, 1.0f, 1.0f, 0.0f);
 
@@ -720,6 +722,7 @@ public sealed partial class D3D11HdrRenderPipeline
             || _document is null
             || _gainMapVertexShader is null
             || _linearClampSampler is null
+            || _pointClampSampler is null
             || _gainMapConstantsBuffer is null
             || _primaryTextureView is null
             || _pixelWidth <= 0
@@ -776,7 +779,7 @@ public sealed partial class D3D11HdrRenderPipeline
                 _context.PSSetShaderResource(0, _primaryTextureView);
             }
 
-            _context.PSSetSampler(0, _linearClampSampler);
+            BindZoomFilterSamplers();
             _context.PSSetConstantBuffer(0, _gainMapConstantsBuffer);
 
             for (var startY = 0; startY < fullHeight; startY += stripHeight)

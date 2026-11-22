@@ -1,4 +1,5 @@
-﻿using HdrImageViewer.Presentation;
+using HdrImageViewer.Presentation;
+using HdrImageViewer.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -86,12 +87,42 @@ public sealed partial class HomePage
     private void ViewerChromeHideTimer_Tick(Microsoft.UI.Dispatching.DispatcherQueueTimer sender, object args)
     {
         sender.Stop();
+        if (!IsViewerChromeAutoHideEnabled)
+        {
+            return;
+        }
+
         if (_isPointerOverViewerChrome || ViewerChromeHasKeyboardFocus() || _isExportInProgress)
         {
             sender.Start();
             return;
         }
         if (IsImmersiveViewer && ViewModel.HasImage && !_isCropModeEnabled) SetViewerChromeVisible(false, true);
+    }
+
+    private bool IsViewerChromeAutoHideEnabled =>
+        AppUserSettings.NormalizeViewerChromeAutoHideMilliseconds(_settings.ViewerChromeAutoHideMilliseconds) > 0;
+
+    /// <summary>
+    /// Applies ViewerChromeAutoHideMilliseconds to the hide timer. Zero disables
+    /// auto-hide entirely, so the timer is never started in that mode.
+    /// </summary>
+    private void ApplyViewerChromeAutoHideSetting()
+    {
+        if (_viewerChromeHideTimer is null)
+        {
+            return;
+        }
+
+        _viewerChromeHideTimer.Stop();
+        var milliseconds = AppUserSettings.NormalizeViewerChromeAutoHideMilliseconds(
+            _settings.ViewerChromeAutoHideMilliseconds);
+        if (milliseconds <= 0)
+        {
+            return;
+        }
+
+        _viewerChromeHideTimer.Interval = TimeSpan.FromMilliseconds(milliseconds);
     }
 
     private void ViewerChrome_PointerEntered(object sender, PointerRoutedEventArgs e)
@@ -114,7 +145,10 @@ public sealed partial class HomePage
         var canHide = IsImmersiveViewer && ViewModel.HasImage && !_isCropModeEnabled;
         SetViewerChromeVisible(true, canHide);
         _viewerChromeHideTimer?.Stop();
-        if (canHide && !_isPointerOverViewerChrome) _viewerChromeHideTimer?.Start();
+        if (canHide && IsViewerChromeAutoHideEnabled && !_isPointerOverViewerChrome)
+        {
+            _viewerChromeHideTimer?.Start();
+        }
     }
 
     private void SetViewerChromeVisible(bool visible, bool animate)

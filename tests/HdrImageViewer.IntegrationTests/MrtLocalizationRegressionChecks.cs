@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Threading.Tasks;
 using HdrImageViewer.Services;
@@ -14,7 +14,7 @@ internal static class MrtLocalizationRegressionChecks
         var baseDir = AppContext.BaseDirectory;
         var priPath = File.Exists(Path.Combine(baseDir, "resources.pri"))
             ? Path.Combine(baseDir, "resources.pri")
-            : Path.Combine(baseDir, "HdrImageViewer.pri");
+            : Path.Combine(baseDir, "qHdrImageViewer.pri");
 
         if (!File.Exists(priPath))
         {

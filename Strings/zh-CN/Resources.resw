@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
     <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
@@ -59,10 +59,10 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="AppTitle" xml:space="preserve">
-    <value>HDR 图片查看器</value>
+    <value>qHdrImageViewer</value>
   </data>
   <data name="AppTitleBar.Title" xml:space="preserve">
-    <value>HDR 图片查看器</value>
+    <value>qHdrImageViewer</value>
   </data>
   <data name="NavViewer" xml:space="preserve">
     <value>查看器</value>
@@ -83,7 +83,7 @@
     <value>关于</value>
   </data>
   <data name="AboutAppName.Text" xml:space="preserve">
-    <value>HDR 图片查看器</value>
+    <value>qHdrImageViewer</value>
   </data>
   <data name="AboutVersionLoading" xml:space="preserve">
     <value>版本：读取中</value>
@@ -857,7 +857,7 @@
     <value>动态</value>
   </data>
   <data name="AppxManifestDisplayName" xml:space="preserve">
-    <value>HDR 图片查看器</value>
+    <value>qHdrImageViewer</value>
   </data>
   <data name="AppxManifestDescription" xml:space="preserve">
     <value>基于 WinUI 3 和 DirectX HDR 渲染表面的图片查看器</value>
@@ -1376,5 +1376,638 @@
   </data>
   <data name="HdrHeadroomAblSimulation" xml:space="preserve">
     <value>ABL 模拟</value>
+  </data>
+  <data name="SettingsPageGeneralTitle" xml:space="preserve">
+    <value>常规</value>
+  </data>
+  <data name="SettingsPageViewerTitle" xml:space="preserve">
+    <value>查看器</value>
+  </data>
+  <data name="SettingsPageHdrColorTitle" xml:space="preserve">
+    <value>HDR 与色彩</value>
+  </data>
+  <data name="SettingsPagePerformanceTitle" xml:space="preserve">
+    <value>性能</value>
+  </data>
+  <data name="SettingsPageToolsExportTitle" xml:space="preserve">
+    <value>工具与导出</value>
+  </data>
+  <data name="SettingsPageAppearanceTitle" xml:space="preserve">
+    <value>外观与语言</value>
+  </data>
+  <data name="SettingsPageAdvancedTitle" xml:space="preserve">
+    <value>高级</value>
+  </data>
+  <data name="SettingsGroupStartupHeader" xml:space="preserve">
+    <value>启动</value>
+  </data>
+  <data name="SettingsGroupSystemHeader" xml:space="preserve">
+    <value>Windows 集成</value>
+  </data>
+  <data name="SettingsGroupZoomHeader" xml:space="preserve">
+    <value>缩放</value>
+  </data>
+  <data name="SettingsGroupMouseHeader" xml:space="preserve">
+    <value>鼠标与触控</value>
+  </data>
+  <data name="SettingsGroupOnScreenHeader" xml:space="preserve">
+    <value>界面元素</value>
+  </data>
+  <data name="SettingsGroupStatusBarHeader" xml:space="preserve">
+    <value>状态栏</value>
+  </data>
+  <data name="SettingsGroupHdrDisplayHeader" xml:space="preserve">
+    <value>HDR 显示</value>
+  </data>
+  <data name="SettingsGroupHeadroomHeader" xml:space="preserve">
+    <value>HDR Headroom</value>
+  </data>
+  <data name="SettingsGroupAnalysisHeader" xml:space="preserve">
+    <value>亮度分析</value>
+  </data>
+  <data name="SettingsGroupPreloadHeader" xml:space="preserve">
+    <value>预加载</value>
+  </data>
+  <data name="SettingsGroupCacheHeader" xml:space="preserve">
+    <value>缓存</value>
+  </data>
+  <data name="SettingsGroupMemoryHeader" xml:space="preserve">
+    <value>内存</value>
+  </data>
+  <data name="SettingsGroupExportHeader" xml:space="preserve">
+    <value>导出行为</value>
+  </data>
+  <data name="SettingsGroupThemeHeader" xml:space="preserve">
+    <value>主题与语言</value>
+  </data>
+  <data name="SettingsGroupConfigurationHeader" xml:space="preserve">
+    <value>配置文件</value>
+  </data>
+  <data name="SettingsGroupDiagnosticsHeader" xml:space="preserve">
+    <value>诊断信息</value>
+  </data>
+  <data name="SettingsGroupDangerHeader" xml:space="preserve">
+    <value>危险区域</value>
+  </data>
+  <data name="SettingsGroupExperimentalHeader" xml:space="preserve">
+    <value>实验性功能</value>
+  </data>
+  <data name="SettingsRestoreLastImageOnStartupLabel" xml:space="preserve">
+    <value>启动时恢复上次打开的图片</value>
+  </data>
+  <data name="SettingsRestoreLastImageOnStartupDescription" xml:space="preserve">
+    <value>重新打开应用时自动回到上次查看的图片和文件夹。</value>
+  </data>
+  <data name="SettingsOpenDefaultAppsLabel" xml:space="preserve">
+    <value>默认应用设置</value>
+  </data>
+  <data name="SettingsOpenDefaultAppsDescription" xml:space="preserve">
+    <value>在 Windows 设置中把本应用设为默认图片查看器。</value>
+  </data>
+  <data name="SettingsOpenDefaultAppsAction" xml:space="preserve">
+    <value>打开设置</value>
+  </data>
+  <data name="SettingsZoomInterpolationUpscaleLabel" xml:space="preserve">
+    <value>放大插值（&gt;100%）</value>
+  </data>
+  <data name="SettingsZoomInterpolationUpscaleDescription" xml:space="preserve">
+    <value>放大显示（超过 100%）时使用的缩放插值算法；自动保持现有的自适应锐化路径。</value>
+  </data>
+  <data name="SettingsZoomInterpolationDownscaleLabel" xml:space="preserve">
+    <value>缩小滤波（&lt;100%）</value>
+  </data>
+  <data name="SettingsZoomInterpolationDownscaleDescription" xml:space="preserve">
+    <value>缩小显示（低于 100%）时使用的重采样算法。以下为缩小专用滤波器：由 mip 链完成输出足迹的预滤波，卷积核决定锐度与平滑程度；自动保持旧版 mip 过滤路径。</value>
+  </data>
+  <data name="SettingsInterpolationAuto" xml:space="preserve">
+    <value>自动（默认）</value>
+  </data>
+  <data name="SettingsInterpolationNearest" xml:space="preserve">
+    <value>最近邻</value>
+  </data>
+  <data name="SettingsInterpolationBilinear" xml:space="preserve">
+    <value>双线性</value>
+  </data>
+  <data name="SettingsInterpolationBicubic" xml:space="preserve">
+    <value>双三次（Catmull-Rom）</value>
+  </data>
+  <data name="SettingsInterpolationLanczos" xml:space="preserve">
+    <value>Lanczos（Lanczos-2）</value>
+  </data>
+  <data name="SettingsInterpolationArea" xml:space="preserve">
+    <value>面积平均（Box）</value>
+  </data>
+  <data name="SettingsInterpolationMitchell" xml:space="preserve">
+    <value>Mitchell（抗振铃）</value>
+  </data>
+  <data name="SettingsInterpolationRobidoux" xml:space="preserve">
+    <value>Robidoux（缩图专用）</value>
+  </data>
+  <data name="SettingsInterpolationKaiser2" xml:space="preserve">
+    <value>Kaiser（窗函数 sinc）</value>
+  </data>
+  <data name="SettingsWheelZoomStepFactorLabel" xml:space="preserve">
+    <value>滚轮缩放步进</value>
+  </data>
+  <data name="SettingsWheelZoomStepFactorDescription" xml:space="preserve">
+    <value>每一格滚轮对应的缩放倍率（1.02–1.5）。</value>
+  </data>
+  <data name="SettingsUnitMultiplier" xml:space="preserve">
+    <value>倍</value>
+  </data>
+  <data name="SettingsZoomAnimationDurationMillisecondsLabel" xml:space="preserve">
+    <value>缩放动画时长</value>
+  </data>
+  <data name="SettingsZoomAnimationDurationMillisecondsDescription" xml:space="preserve">
+    <value>缩放动画的持续时间，0 表示立即生效。</value>
+  </data>
+  <data name="SettingsUnitMilliseconds" xml:space="preserve">
+    <value>毫秒</value>
+  </data>
+  <data name="SettingsMaxZoomPercentLabel" xml:space="preserve">
+    <value>最大缩放比例</value>
+  </data>
+  <data name="SettingsMaxZoomPercentDescription" xml:space="preserve">
+    <value>允许放大的最大百分比。</value>
+  </data>
+  <data name="SettingsUnitPercent" xml:space="preserve">
+    <value>%</value>
+  </data>
+  <data name="SettingsOpenImageZoomModeLabel" xml:space="preserve">
+    <value>打开图片时的缩放</value>
+  </data>
+  <data name="SettingsOpenImageZoomModeDescription" xml:space="preserve">
+    <value>新打开图片时使用的缩放方式。</value>
+  </data>
+  <data name="SettingsOpenZoomFit" xml:space="preserve">
+    <value>适合窗口</value>
+  </data>
+  <data name="SettingsOpenZoomActualSize" xml:space="preserve">
+    <value>实际大小（100%）</value>
+  </data>
+  <data name="SettingsOpenZoomLast" xml:space="preserve">
+    <value>上次缩放</value>
+  </data>
+  <data name="SettingsLimitWheelZoomOutToFitLabel" xml:space="preserve">
+    <value>滚轮缩小止于适合窗口</value>
+  </data>
+  <data name="SettingsLimitWheelZoomOutToFitDescription" xml:space="preserve">
+    <value>滚轮缩小时不缩小到适合窗口以下。</value>
+  </data>
+  <data name="SettingsMouseWheelBehaviorLabel" xml:space="preserve">
+    <value>鼠标滚轮行为</value>
+  </data>
+  <data name="SettingsMouseWheelBehaviorDescription" xml:space="preserve">
+    <value>选择滚轮是切换图片还是缩放。按住 Ctrl 始终缩放。</value>
+  </data>
+  <data name="SettingsTouchpadGesturesEnabledLabel" xml:space="preserve">
+    <value>触控板与触屏手势</value>
+  </data>
+  <data name="SettingsTouchpadGesturesEnabledDescription" xml:space="preserve">
+    <value>使用双指捏合缩放。</value>
+  </data>
+  <data name="SettingsViewerChromeAutoHideMillisecondsLabel" xml:space="preserve">
+    <value>悬浮工具栏自动隐藏</value>
+  </data>
+  <data name="SettingsViewerChromeAutoHideMillisecondsDescription" xml:space="preserve">
+    <value>无操作后隐藏悬浮控制的延迟，0 表示从不隐藏。</value>
+  </data>
+  <data name="SettingsShowInspectorPanelLabel" xml:space="preserve">
+    <value>显示信息面板</value>
+  </data>
+  <data name="SettingsShowInspectorPanelDescription" xml:space="preserve">
+    <value>显示文件详情、HDR 显示控制和查看工具。</value>
+  </data>
+  <data name="SettingsShowFilmstripLabel" xml:space="preserve">
+    <value>显示胶片栏</value>
+  </data>
+  <data name="SettingsShowFilmstripDescription" xml:space="preserve">
+    <value>在图片下方显示同文件夹的缩略图。</value>
+  </data>
+  <data name="SettingsShowStatusFileNameLabel" xml:space="preserve">
+    <value>状态栏显示文件名</value>
+  </data>
+  <data name="SettingsShowStatusFileNameDescription" xml:space="preserve">
+    <value>在状态栏显示当前文件名。</value>
+  </data>
+  <data name="SettingsShowStatusDimensionsLabel" xml:space="preserve">
+    <value>状态栏显示尺寸</value>
+  </data>
+  <data name="SettingsShowStatusDimensionsDescription" xml:space="preserve">
+    <value>在状态栏显示图片分辨率。</value>
+  </data>
+  <data name="SettingsShowStatusFileSizeLabel" xml:space="preserve">
+    <value>状态栏显示文件大小</value>
+  </data>
+  <data name="SettingsShowStatusFileSizeDescription" xml:space="preserve">
+    <value>在状态栏显示文件大小。</value>
+  </data>
+  <data name="SettingsShowStatusHdrKindLabel" xml:space="preserve">
+    <value>状态栏显示 HDR 类型</value>
+  </data>
+  <data name="SettingsShowStatusHdrKindDescription" xml:space="preserve">
+    <value>在状态栏显示 HDR 格式或增益图类型。</value>
+  </data>
+  <data name="SettingsHdrViewModeLabel" xml:space="preserve">
+    <value>HDR 显示模式</value>
+  </data>
+  <data name="SettingsHdrViewModeDescription" xml:space="preserve">
+    <value>选择 SDR、自适应、备选图或增益图的默认显示方式。</value>
+  </data>
+  <data name="SettingsColorGamutMappingModeLabel" xml:space="preserve">
+    <value>色域映射</value>
+  </data>
+  <data name="SettingsColorGamutMappingModeDescription" xml:space="preserve">
+    <value>选择图像颜色映射到显示器色域的方式。</value>
+  </data>
+  <data name="SettingsAdaptiveToneMappingEnabledLabel" xml:space="preserve">
+    <value>自适应色调映射</value>
+  </data>
+  <data name="SettingsAdaptiveToneMappingEnabledDescription" xml:space="preserve">
+    <value>根据画面内容自动调整高光压缩。</value>
+  </data>
+  <data name="SettingsHdrHeadroomModeLabel" xml:space="preserve">
+    <value>HDR Headroom 来源</value>
+  </data>
+  <data name="SettingsHdrHeadroomModeDescription" xml:space="preserve">
+    <value>选择系统自适应或手动 Headroom 档位。</value>
+  </data>
+  <data name="SettingsHdrManualHeadroomStopsLabel" xml:space="preserve">
+    <value>手动 Headroom 档位</value>
+  </data>
+  <data name="SettingsHdrManualHeadroomStopsDescription" xml:space="preserve">
+    <value>手动 Headroom 的曝光档位（-4 到 +4 stops）。</value>
+  </data>
+  <data name="SettingsUnitStops" xml:space="preserve">
+    <value>档</value>
+  </data>
+  <data name="SettingsSdrWhiteOverrideEnabledLabel" xml:space="preserve">
+    <value>覆盖 SDR 白点</value>
+  </data>
+  <data name="SettingsSdrWhiteOverrideEnabledDescription" xml:space="preserve">
+    <value>使用自定义 SDR 白点亮度而不是显示器报告值。</value>
+  </data>
+  <data name="SettingsSdrWhiteNitsLabel" xml:space="preserve">
+    <value>自定义 SDR 白点</value>
+  </data>
+  <data name="SettingsSdrWhiteNitsDescription" xml:space="preserve">
+    <value>自定义 SDR 白点亮度（80–400 nits）。</value>
+  </data>
+  <data name="SettingsUnitNits" xml:space="preserve">
+    <value>nits</value>
+  </data>
+  <data name="SettingsAnalysisAutoRefreshEnabledLabel" xml:space="preserve">
+    <value>分析自动刷新</value>
+  </data>
+  <data name="SettingsAnalysisAutoRefreshEnabledDescription" xml:space="preserve">
+    <value>画面变化后自动刷新亮度分析。</value>
+  </data>
+  <data name="SettingsPreloadAdjacentImagesLabel" xml:space="preserve">
+    <value>预加载相邻图片</value>
+  </data>
+  <data name="SettingsPreloadAdjacentImagesDescription" xml:space="preserve">
+    <value>提前加载前后图片以加快翻页。</value>
+  </data>
+  <data name="SettingsAdjacentPreloadRadiusLabel" xml:space="preserve">
+    <value>预加载半径</value>
+  </data>
+  <data name="SettingsAdjacentPreloadRadiusDescription" xml:space="preserve">
+    <value>每个方向预加载的图片数量。</value>
+  </data>
+  <data name="SettingsUnitImages" xml:space="preserve">
+    <value>张</value>
+  </data>
+  <data name="SettingsSkipCloudPlaceholdersLabel" xml:space="preserve">
+    <value>跳过云端占位文件</value>
+  </data>
+  <data name="SettingsDecodedCacheBudgetMegabytesLabel" xml:space="preserve">
+    <value>解码缓存预算</value>
+  </data>
+  <data name="SettingsDecodedCacheBudgetMegabytesDescription" xml:space="preserve">
+    <value>解码后像素缓存的内存上限。</value>
+  </data>
+  <data name="SettingsUnitMegabytes" xml:space="preserve">
+    <value>MB</value>
+  </data>
+  <data name="SettingsMetadataCacheMaxFilesLabel" xml:space="preserve">
+    <value>元数据缓存文件数</value>
+  </data>
+  <data name="SettingsMetadataCacheMaxFilesDescription" xml:space="preserve">
+    <value>磁盘元数据缓存保留的最大文件数。</value>
+  </data>
+  <data name="SettingsUnitFiles" xml:space="preserve">
+    <value>个文件</value>
+  </data>
+  <data name="SettingsDirectoryIndexCacheCountLabel" xml:space="preserve">
+    <value>目录索引缓存数</value>
+  </data>
+  <data name="SettingsDirectoryIndexCacheCountDescription" xml:space="preserve">
+    <value>内存中保留的文件夹索引缓存数量。</value>
+  </data>
+  <data name="SettingsUnitFolders" xml:space="preserve">
+    <value>个目录</value>
+  </data>
+  <data name="SettingsMemoryPressureAutoTrimLabel" xml:space="preserve">
+    <value>内存压力自动回收</value>
+  </data>
+  <data name="SettingsMemoryPressureAutoTrimDescription" xml:space="preserve">
+    <value>内存紧张时自动释放缓存。</value>
+  </data>
+  <data name="SettingsConfirmBeforeOverwriteLabel" xml:space="preserve">
+    <value>覆盖前确认</value>
+  </data>
+  <data name="SettingsConfirmBeforeOverwriteDescription" xml:space="preserve">
+    <value>导出文件已存在时先询问。</value>
+  </data>
+  <data name="SettingsBatchExportMaxRetriesLabel" xml:space="preserve">
+    <value>批处理失败重试</value>
+  </data>
+  <data name="SettingsBatchExportMaxRetriesDescription" xml:space="preserve">
+    <value>批量导出失败后最多重试的次数。</value>
+  </data>
+  <data name="SettingsUnitRetries" xml:space="preserve">
+    <value>次</value>
+  </data>
+  <data name="SettingsThemeLabel" xml:space="preserve">
+    <value>主题</value>
+  </data>
+  <data name="SettingsLanguageLabel" xml:space="preserve">
+    <value>语言</value>
+  </data>
+  <data name="SettingsLanguageDescription" xml:space="preserve">
+    <value>选择界面语言，需要重启应用后完全生效。</value>
+  </data>
+  <data name="SettingsLanguageSystem" xml:space="preserve">
+    <value>跟随系统</value>
+  </data>
+  <data name="SettingsLanguageNameZhCn" xml:space="preserve">
+    <value>中文（简体）</value>
+  </data>
+  <data name="SettingsLanguageNameEnUs" xml:space="preserve">
+    <value>English</value>
+  </data>
+  <data name="SettingsLanguageNameRuRu" xml:space="preserve">
+    <value>Русский</value>
+  </data>
+  <data name="SettingsLanguageNameDeDe" xml:space="preserve">
+    <value>Deutsch</value>
+  </data>
+  <data name="SettingsLanguageNameFrFr" xml:space="preserve">
+    <value>Français</value>
+  </data>
+  <data name="SettingsLanguageNameEsEs" xml:space="preserve">
+    <value>Español</value>
+  </data>
+  <data name="SettingsLanguageNameItIt" xml:space="preserve">
+    <value>Italiano</value>
+  </data>
+  <data name="SettingsLanguageNamePtBr" xml:space="preserve">
+    <value>Português (Brasil)</value>
+  </data>
+  <data name="SettingsLanguageNameJaJp" xml:space="preserve">
+    <value>日本語</value>
+  </data>
+  <data name="SettingsLanguageNameKoKr" xml:space="preserve">
+    <value>한국어</value>
+  </data>
+  <data name="SettingsLanguageNamePlPl" xml:space="preserve">
+    <value>Polski</value>
+  </data>
+  <data name="SettingsLanguageNameUkUa" xml:space="preserve">
+    <value>Українська</value>
+  </data>
+  <data name="SettingsOpenConfigFolderLabel" xml:space="preserve">
+    <value>配置文件位置</value>
+  </data>
+  <data name="SettingsOpenConfigFolderDescription" xml:space="preserve">
+    <value>打开包含设置和日志的文件夹。</value>
+  </data>
+  <data name="SettingsOpenConfigFolderAction" xml:space="preserve">
+    <value>打开</value>
+  </data>
+  <data name="SettingsExportSettingsLabel" xml:space="preserve">
+    <value>导出设置</value>
+  </data>
+  <data name="SettingsExportSettingsDescription" xml:space="preserve">
+    <value>将当前设置保存为 JSON 文件。</value>
+  </data>
+  <data name="SettingsExportSettingsAction" xml:space="preserve">
+    <value>导出</value>
+  </data>
+  <data name="SettingsImportSettingsLabel" xml:space="preserve">
+    <value>导入设置</value>
+  </data>
+  <data name="SettingsImportSettingsDescription" xml:space="preserve">
+    <value>从 JSON 文件恢复设置。</value>
+  </data>
+  <data name="SettingsImportSettingsAction" xml:space="preserve">
+    <value>导入</value>
+  </data>
+  <data name="SettingsDiagnosticsLabel" xml:space="preserve">
+    <value>诊断信息</value>
+  </data>
+  <data name="SettingsDiagnosticsDescription" xml:space="preserve">
+    <value>当前版本、配置路径、语言、主题和图形适配器信息。</value>
+  </data>
+  <data name="SettingsDiagnosticsVersionFormat" xml:space="preserve">
+    <value>版本：{0}</value>
+  </data>
+  <data name="SettingsDiagnosticsPathFormat" xml:space="preserve">
+    <value>设置文件：{0}</value>
+  </data>
+  <data name="SettingsDiagnosticsLanguageFormat" xml:space="preserve">
+    <value>语言：{0}</value>
+  </data>
+  <data name="SettingsDiagnosticsThemeFormat" xml:space="preserve">
+    <value>主题：{0}</value>
+  </data>
+  <data name="SettingsDiagnosticsGpuFormat" xml:space="preserve">
+    <value>图形适配器：{0}</value>
+  </data>
+  <data name="SettingsDiagnosticsUnavailable" xml:space="preserve">
+    <value>不可用</value>
+  </data>
+  <data name="SettingsResetAllSettingsLabel" xml:space="preserve">
+    <value>恢复全部默认设置</value>
+  </data>
+  <data name="SettingsResetAllSettingsDescription" xml:space="preserve">
+    <value>将所有设置恢复为默认值，此操作不可撤销。</value>
+  </data>
+  <data name="SettingsResetAllSettingsAction" xml:space="preserve">
+    <value>恢复默认</value>
+  </data>
+  <data name="SettingsResetAllConfirmTitle" xml:space="preserve">
+    <value>恢复全部默认设置？</value>
+  </data>
+  <data name="SettingsResetAllConfirmMessage" xml:space="preserve">
+    <value>所有设置（包括语言和主题）将恢复为默认值。</value>
+  </data>
+  <data name="SettingsRtxVsrMenuEnabledLabel" xml:space="preserve">
+    <value>启用 RTX VSR（右键菜单）</value>
+  </data>
+  <data name="SettingsRtxVsrMenuEnabledDescription" xml:space="preserve">
+    <value>开启后，图片右键菜单会显示「RTX VSR 超分」；关闭则隐藏该项。不会自动对所有图片应用 VSR。需要 NVIDIA RTX 显卡与 VSR 运行库。</value>
+  </data>
+  <data name="SettingsRtxVsrScaleFactorLabel" xml:space="preserve">
+    <value>VSR 放大倍数</value>
+  </data>
+  <data name="SettingsRtxVsrScaleFactorDescription" xml:space="preserve">
+    <value>选择 2× 或 4× 放大（仅标准与高码率模式）。</value>
+  </data>
+  <data name="SettingsRtxVsrModeLabel" xml:space="preserve">
+    <value>VSR 处理模式</value>
+  </data>
+  <data name="SettingsRtxVsrModeDescription" xml:space="preserve">
+    <value>标准与高码率模式放大 2×/4×；去噪与去模糊在原分辨率下处理。</value>
+  </data>
+  <data name="SettingsRtxVsrModeStandard" xml:space="preserve">
+    <value>标准超分</value>
+  </data>
+  <data name="SettingsRtxVsrModeDenoise" xml:space="preserve">
+    <value>去噪</value>
+  </data>
+  <data name="SettingsRtxVsrModeDeblur" xml:space="preserve">
+    <value>去模糊</value>
+  </data>
+  <data name="SettingsRtxVsrModeHighBitrate" xml:space="preserve">
+    <value>高码率</value>
+  </data>
+  <data name="SettingsRtxVsrQualityPresetLabel" xml:space="preserve">
+    <value>VSR 质量档位</value>
+  </data>
+  <data name="SettingsRtxVsrQualityPresetDescription" xml:space="preserve">
+    <value>低 / 中 / 高 / 极高；档位越高细节越多、开销越大。</value>
+  </data>
+  <data name="SettingsRtxVsrQualityLow" xml:space="preserve">
+    <value>低</value>
+  </data>
+  <data name="SettingsRtxVsrQualityMedium" xml:space="preserve">
+    <value>中</value>
+  </data>
+  <data name="SettingsRtxVsrQualityHigh" xml:space="preserve">
+    <value>高</value>
+  </data>
+  <data name="SettingsRtxVsrQualityUltra" xml:space="preserve">
+    <value>极高</value>
+  </data>
+  <data name="SettingsVsrScale2x" xml:space="preserve">
+    <value>2x</value>
+  </data>
+  <data name="SettingsVsrScale4x" xml:space="preserve">
+    <value>4x</value>
+  </data>
+  <data name="SettingsSearchPlaceholder" xml:space="preserve">
+    <value>搜索设置（Ctrl+K）</value>
+  </data>
+  <data name="SettingsSearchHint" xml:space="preserve">
+    <value>Ctrl+K 聚焦搜索</value>
+  </data>
+  <data name="SettingsSearchBreadcrumbFormat" xml:space="preserve">
+    <value>{0} › {1}</value>
+  </data>
+  <data name="SettingsSearchResultsHeader" xml:space="preserve">
+    <value>{0} 条匹配设置</value>
+  </data>
+  <data name="SettingsSearchNoResults" xml:space="preserve">
+    <value>没有找到匹配的设置</value>
+  </data>
+  <data name="SettingsResetPageButton" xml:space="preserve">
+    <value>恢复本页默认</value>
+  </data>
+  <data name="SettingsResetPageConfirmTitle" xml:space="preserve">
+    <value>恢复本页默认设置？</value>
+  </data>
+  <data name="SettingsResetPageConfirmMessage" xml:space="preserve">
+    <value>本页所有设置将恢复为默认值。</value>
+  </data>
+  <data name="SettingsResetPageCompleted" xml:space="preserve">
+    <value>本页设置已恢复默认</value>
+  </data>
+  <data name="SettingsResetAllCompleted" xml:space="preserve">
+    <value>所有设置已恢复默认</value>
+  </data>
+  <data name="SettingsResetToDefaultToolTip" xml:space="preserve">
+    <value>重置为默认值</value>
+  </data>
+  <data name="SettingsImportConfirmTitle" xml:space="preserve">
+    <value>导入设置？</value>
+  </data>
+  <data name="SettingsImportConfirmMessage" xml:space="preserve">
+    <value>导入会覆盖当前所有设置。</value>
+  </data>
+  <data name="SettingsDialogConfirm" xml:space="preserve">
+    <value>确定</value>
+  </data>
+  <data name="SettingsDialogCancel" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="SettingsExportSucceeded" xml:space="preserve">
+    <value>设置已导出到 {0}</value>
+  </data>
+  <data name="SettingsExportFailed" xml:space="preserve">
+    <value>导出设置失败</value>
+  </data>
+  <data name="SettingsImportSucceeded" xml:space="preserve">
+    <value>设置已导入</value>
+  </data>
+  <data name="SettingsImportFailed" xml:space="preserve">
+    <value>导入设置失败，请检查文件格式</value>
+  </data>
+  <data name="SettingsActionFailed" xml:space="preserve">
+    <value>操作失败</value>
+  </data>
+  <data name="SettingsConfigFileType" xml:space="preserve">
+    <value>JSON 设置文件</value>
+  </data>
+  <data name="RtxVsrCommand" xml:space="preserve">
+    <value>RTX VSR</value>
+  </data>
+  <data name="RtxVsrCommandToolTip" xml:space="preserve">
+    <value>用 NVIDIA RTX VSR 超分增强当前图像（{0}，{1}×，输出为 SDR）</value>
+  </data>
+  <data name="RtxVsrUnavailableToolTip" xml:space="preserve">
+    <value>RTX VSR 不可用：{0}</value>
+  </data>
+  <data name="RtxVsrProbingStatus" xml:space="preserve">
+    <value>正在检测 RTX VSR 支持…</value>
+  </data>
+  <data name="RtxVsrProcessingStatus" xml:space="preserve">
+    <value>RTX VSR 处理中…首次使用需加载模型（约 3–4 秒）</value>
+  </data>
+  <data name="RtxVsrReprocessingStatus" xml:space="preserve">
+    <value>RTX VSR 重新处理中…</value>
+  </data>
+  <data name="RtxVsrActiveStatus" xml:space="preserve">
+    <value>RTX VSR 已启用：{0}×{1}，{2:0} ms</value>
+  </data>
+  <data name="RtxVsrFailedStatus" xml:space="preserve">
+    <value>RTX VSR 失败：{0}</value>
+  </data>
+  <data name="RtxVsrDisabledStatus" xml:space="preserve">
+    <value>RTX VSR 已关闭，显示原图</value>
+  </data>
+  <data name="RtxVsrRestoreFailedStatus" xml:space="preserve">
+    <value>恢复原图失败：{0}</value>
+  </data>
+  <data name="RtxVsrBadge" xml:space="preserve">
+    <value>RTX VSR {0}×</value>
+  </data>
+  <data name="RtxVsrBadgeSdr" xml:space="preserve">
+    <value>RTX VSR {0}×（SDR）</value>
+  </data>
+  <data name="ContextMenuRtxVsr" xml:space="preserve">
+    <value>RTX VSR 超分</value>
+  </data>
+  <data name="RtxVsrBadgeMode" xml:space="preserve">
+    <value>RTX VSR · {0}</value>
+  </data>
+  <data name="RtxVsrBadgeUpscale" xml:space="preserve">
+    <value>RTX VSR · {0}×</value>
+  </data>
+  <data name="RtxVsrCompareHint" xml:space="preserve">
+    <value>放大图片查看细节；再次点击右键菜单的「关闭 RTX VSR 超分」即可对比开启前后的差异。</value>
+  </data>
+  <data name="ContextMenuRtxVsrDisable" xml:space="preserve">
+    <value>关闭 RTX VSR 超分</value>
   </data>
 </root>

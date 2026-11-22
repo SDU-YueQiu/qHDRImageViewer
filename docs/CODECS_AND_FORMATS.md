@@ -28,13 +28,13 @@ This document is the current format, codec, native-tool, and HDR metadata refere
 
 The app no longer probes ad hoc `external\libjxl`, `external\libavif`, `external\libheif`, or `external\libultrahdr` build folders at runtime. Those belong under `external\_deps` as local source/build cache, not runtime inputs.
 
-These command-line tools are launched as external processes. When a user installs them separately, HDR Image Viewer is not redistributing those third-party binaries. Redistribution obligations only attach to binaries that a release package actually carries, for example files copied from `external\encoders\<arch>` into `encoders\<arch>`.
+These command-line tools are launched as external processes. When a user installs them separately, qHdrImageViewer is not redistributing those third-party binaries. Redistribution obligations only attach to binaries that a release package actually carries, for example files copied from `external\encoders\<arch>` into `encoders\<arch>`.
 
 ## Bundled x64 Tool Set
 
 The pinned bundle in `external/encoders/x64` contains libultrahdr's post-2.0.2
 source snapshot `66821e0a261a` (the CLI still reports 2.0.2),
-libjxl 0.12.0, libavif 1.4.2 (including avifgainmaputil), libheif 1.23.5,
+libjxl 0.12.0, libavif 1.4.2, libheif 1.23.5,
 libde265 1.1.3 and x265 4.3 multilib. The native bridge uses OpenEXR 3.5.1.
 The AVIF gain-map CLI now shares the root UCRT64 runtime instead of a separate
 subdirectory. The application still supports tool subdirectories for existing installations.
@@ -72,7 +72,7 @@ Current implementation:
 - `HeifGainMapDecoder` uses Windows Imaging for the primary/base image to avoid known corrupted primary HEVC output on local libheif/libde265 paths.
 - HEIF auxiliary gain-map items and XMP metadata are extracted through LibHeifSharp.
 - HEIF ISO tmap files parse the BMFF item graph, locate the derived base+gain-map relationship, parse binary ISO 21496 metadata, and decode the referenced grid gain-map item through LibHeifSharp.
-- AVIF ISO gain-map files use the same native tmap reader/decoder as HEIC; `avifgainmaputil.exe` remains available as a standalone tool.
+- AVIF ISO gain-map files use the same native tmap reader/decoder as HEIC. The bundle intentionally does not ship `avifgainmaputil.exe`; the app reads ISO gain maps in-process and only needs it when an external workflow asks for the standalone tool.
 - JPEG XL `jhgm` files parse the box bundle, read ISO 21496 metadata, extract the embedded naked JXL gain-map codestream, and decode that codestream through `djxl.exe`.
 - `D3D11HdrRenderPipeline` reconstructs the HDR frame in the same gain-map shader architecture used by JPEG gain-map files.
 - The custom reference-white override also applies to gain-map HDR. Standard Adobe/ISO gain maps default to a 203-nit content reference; Apple HDRGainMap defaults to the current display SDR white, and the slider can override that reconstructed HDR brightness anchor.

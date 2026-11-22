@@ -2,7 +2,14 @@ namespace HdrImageViewer.Presentation;
 
 internal static class ViewerMotion
 {
-    public const double ZoomDurationMilliseconds = 140;
+    public const double DefaultZoomDurationMilliseconds = 140;
+
+    /// <summary>
+    /// Duration of a zoom animation in milliseconds. Configured from the user's
+    /// ZoomAnimationDurationMilliseconds setting; the retargetable motion reads
+    /// it on every frame, so a settings change applies to the next zoom.
+    /// </summary>
+    public static double ZoomDurationMilliseconds { get; set; } = DefaultZoomDurationMilliseconds;
 
     public static double Interpolate(double from, double to, double elapsedMilliseconds,
         double durationMilliseconds, bool entering = true)

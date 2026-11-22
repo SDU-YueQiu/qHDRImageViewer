@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$Configuration = 'Release',
     [ValidateSet('x64')]
     [string]$Platform = 'x64',
@@ -11,7 +11,7 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-$csproj = Join-Path $repo 'HdrImageViewer.csproj'
+$csproj = Join-Path $repo 'qHdrImageViewer.csproj'
 $appPackagesDir = Join-Path $repo 'AppPackages'
 
 function Find-SignTool {
@@ -54,7 +54,7 @@ try {
         --nologo
     if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed (exit $LASTEXITCODE)" }
 
-    $msix = Get-ChildItem -Path (Join-Path $appPackagesDir "HdrImageViewer_*_$($Platform)_Test") -Filter "HdrImageViewer_*_$($Platform).msix" -Recurse -ErrorAction SilentlyContinue |
+    $msix = Get-ChildItem -Path (Join-Path $appPackagesDir "qHdrImageViewer_*_$($Platform)_Test") -Filter "qHdrImageViewer_*_$($Platform).msix" -Recurse -ErrorAction SilentlyContinue |
         Sort-Object LastWriteTime -Descending |
         Select-Object -First 1
     if (-not $msix) {

@@ -81,7 +81,7 @@ public partial class App : Application
         {
             var logPath = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "HdrImageViewer",
+                "qHdrImageViewer",
                 "crash.log");
             Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
             File.AppendAllText(

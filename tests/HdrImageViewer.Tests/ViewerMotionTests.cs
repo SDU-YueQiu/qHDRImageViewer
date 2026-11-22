@@ -79,4 +79,32 @@ public sealed class ViewerMotionTests
         Assert.Equal(4, ViewerMotion.Interpolate(1, 4, 0, 0));
         Assert.Equal(4, ViewerMotion.Interpolate(1, 4, 1000, 140));
     }
+
+    [Fact]
+    public void ZoomDurationPropertyControlsRetargetableMotion()
+    {
+        var originalDuration = ViewerMotion.ZoomDurationMilliseconds;
+        try
+        {
+            ViewerMotion.ZoomDurationMilliseconds = 0;
+            var immediate = new RetargetableViewerMotion(1);
+            immediate.Retarget(2, 0);
+            Assert.True(immediate.IsComplete(0));
+            Assert.Equal(2, immediate.Sample(0));
+
+            ViewerMotion.ZoomDurationMilliseconds = 300;
+            var delayed = new RetargetableViewerMotion(1);
+            delayed.Retarget(2, 0);
+            Assert.False(delayed.IsComplete(140));
+            Assert.InRange(delayed.Sample(140), 1, 2);
+            Assert.True(delayed.IsComplete(300));
+            Assert.Equal(2, delayed.Sample(300));
+        }
+        finally
+        {
+            ViewerMotion.ZoomDurationMilliseconds = originalDuration;
+        }
+
+        Assert.Equal(ViewerMotion.DefaultZoomDurationMilliseconds, ViewerMotion.ZoomDurationMilliseconds);
+    }
 }

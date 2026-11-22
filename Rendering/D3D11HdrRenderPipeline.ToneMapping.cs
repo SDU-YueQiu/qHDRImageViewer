@@ -30,6 +30,9 @@ public sealed partial class D3D11HdrRenderPipeline
             EffectiveDisplayBoostLog2,
             _displayConfiguration.MaxFullFrameSceneValue);
         constants.ImageLayout = GetCurrentImageLayout();
+        constants.ZoomFilter = GainMapShaderConstants.CreateZoomFilter(
+            _zoomInterpolationUpscale,
+            _zoomDownscale);
         var toneMapState = _toneMapModeCache.GetOrCreate(EffectiveViewModeForCurrentFrame, () =>
         {
             var input = BuildToneMapConstants(constants);

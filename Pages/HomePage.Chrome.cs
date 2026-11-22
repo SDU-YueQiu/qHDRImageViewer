@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using HdrImageViewer.Services;
 using HdrImageViewer.Presentation;
 using Microsoft.UI.Xaml;
@@ -11,6 +11,10 @@ namespace HdrImageViewer.Pages;
 public sealed partial class HomePage
 {
     private bool _updatingZoomSlider;
+    // Fit state shows the inward-bracket "fitted" glyph; every other zoom state
+    // shows the outward "expand to fit" glyph, matching Windows Photos.
+    private const string ZoomFitModeGlyph = "\uE9A6";
+    private const string ZoomActualSizeModeGlyph = "\uE740";
     private string _statusFileSize = string.Empty;
     private string _statusFileSizePath = string.Empty;
     private long? _currentDocumentFileLength;
@@ -141,16 +145,21 @@ public sealed partial class HomePage
             ? ViewerViewportMath.CalculateFitSize(PreviewSurface.ActualWidth, PreviewSurface.ActualHeight, ImageSurface.Width / ImageSurface.Height).Width
             : 0;
         var percentage = ViewerViewportMath.CalculateZoomPercentage(ImageSurface.Width * NativeZoomFactor, fitWidth, actualSizeScale);
+        var maximumPercentage = MaximumZoomPercentage;
         ZoomOutButton.IsEnabled = hasImage && percentage > 1.01;
-        ZoomInButton.IsEnabled = hasImage && percentage < 799.99;
+        ZoomInButton.IsEnabled = hasImage && percentage < maximumPercentage - 0.01;
         ZoomLevelText.Text = hasImage ? $"{percentage:0.#}%" : "—";
         ToolTipService.SetToolTip(ZoomMenuButton, !hasImage ? Localization.GetString("ViewerZoom")
             : _isFitZoom ? Localization.GetString("ZoomModeFit")
-            : _isFillZoom ? Localization.GetString("ZoomModeFill") : Localization.GetString("ViewerZoom"));
+            : _isFillZoom ? Localization.GetString("ZoomModeFill")
+            : _isActualSizeZoom ? Localization.GetString("ToolbarZoomActual")
+            : Localization.GetString("ViewerZoom"));
         AutomationProperties.SetName(ZoomMenuButton, $"{Localization.GetString("ViewerZoom")}: {ZoomLevelText.Text}");
+        UpdateZoomModeToggle(hasImage);
         _updatingZoomSlider = true;
         try
         {
+            ZoomSlider.Maximum = maximumPercentage;
             ZoomSlider.Value = Math.Clamp(percentage, ZoomSlider.Minimum, ZoomSlider.Maximum);
         }
         finally
@@ -158,6 +167,21 @@ public sealed partial class HomePage
             _updatingZoomSlider = false;
         }
     }
+
+    // The mode button mirrors Windows Photos: its icon shows the current zoom
+    // state and its tooltip names the action the next click performs.
+    private void UpdateZoomModeToggle(bool hasImage)
+    {
+        var isFitMode = !hasImage || _isFitZoom || _zoomTargetFit;
+        ZoomModeToggleIcon.Glyph = isFitMode ? ZoomFitModeGlyph : ZoomActualSizeModeGlyph;
+        var actionName = !hasImage
+            ? Localization.GetString("ViewerZoom")
+            : isFitMode ? Localization.GetString("ToolbarZoomActual")
+            : Localization.GetString("ToolbarZoomWindow");
+        ToolTipService.SetToolTip(ZoomFitButton, actionName);
+        AutomationProperties.SetName(ZoomFitButton, actionName);
+    }
+
 
     private static string FormatFileSizeBytes(long bytes)
     {
@@ -247,11 +271,46 @@ public sealed partial class HomePage
             return;
         }
 
-        var sourceSize = GetKnownSourcePixelSize();
-        var dimensions = sourceSize is { } size ? $" · {size.Width} × {size.Height}" : string.Empty;
-        var fileSize = _statusFileSize.Length > 0 ? $" · {_statusFileSize}" : string.Empty;
-        ImageStatusText.Text = $"{ViewModel.FormatName}{dimensions}{fileSize}";
-        ToolTipService.SetToolTip(ImageStatusText, $"{ViewModel.FileName}\n{ViewModel.HdrKind}\n{ViewModel.RenderStatus}");
+        var parts = new List<string>();
+        if (_settings.ShowStatusFileName)
+        {
+            parts.Add(ViewModel.FormatName);
+        }
+
+        // While RTX VSR is active the layout still follows the original document
+        // pixels (that is what keeps the zoom and framing unchanged), but the
+        // status bar should report the enhanced rendition's dimensions.
+        var sourceSize = _rtxVsrActive && _rtxVsrAppliedPixelSize is { } enhancedSize
+            ? enhancedSize
+            : GetKnownSourcePixelSize();
+        if (_settings.ShowStatusDimensions && sourceSize is { } size)
+        {
+            parts.Add($"{size.Width} × {size.Height}");
+        }
+
+        if (_settings.ShowStatusFileSize && _statusFileSize.Length > 0)
+        {
+            parts.Add(_statusFileSize);
+        }
+
+        if (_settings.ShowStatusHdrKind)
+        {
+            parts.Add(ViewModel.HdrKind);
+        }
+
+        if (_rtxVsrActive)
+        {
+            parts.Add(RtxVsrBadgeText);
+        }
+
+        ImageStatusText.Text = string.Join(" · ", parts);
+        var toolTipParts = new List<string> { ViewModel.FileName, ViewModel.HdrKind, ViewModel.RenderStatus };
+        if (_rtxVsrActive)
+        {
+            toolTipParts.Add(RtxVsrBadgeText);
+        }
+
+        ToolTipService.SetToolTip(ImageStatusText, string.Join("\n", toolTipParts));
     }
 
     private (int Width, int Height)? GetKnownSourcePixelSize()

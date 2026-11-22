@@ -79,6 +79,49 @@ internal static class JxlGainMapDecoder
     {
         try
         {
+            if (JxlNativeDecoder.TryReadGainMapBox(path) is { } bundle
+                && TryParseBundleMetadata(bundle) is { } nativeMetadata)
+            {
+                return nativeMetadata;
+            }
+        }
+        catch
+        {
+            // Fall through to the raw container scan.
+        }
+
+        return TryReadMetadataFromRawContainer(path);
+    }
+
+    private static IsoGainMapMetadata? TryParseBundleMetadata(ReadOnlySpan<byte> payload)
+    {
+        if (payload.Length < 8 || payload[0] != 0)
+        {
+            return null;
+        }
+
+        var metadataSize = BinaryPrimitives.ReadUInt16BigEndian(payload.Slice(1, 2));
+        if (metadataSize <= 0 || 3 + metadataSize > payload.Length)
+        {
+            return null;
+        }
+
+        try
+        {
+            return IsoGainMapMetadataParser.Parse(
+                payload.Slice(3, metadataSize),
+                IsoGainMapMetadataPayloadKind.JpegXl);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static IsoGainMapMetadata? TryReadMetadataFromRawContainer(string path)
+    {
+        try
+        {
             using var stream = new FileStream(
                 path,
                 FileMode.Open,
@@ -187,7 +230,7 @@ internal static class JxlGainMapDecoder
 
         var djxl = NativeToolLocator.FindTool("djxl.exe")
             ?? throw new InvalidOperationException("未找到 djxl.exe，无法解码 JPEG XL gain-map。请把 libjxl 工具放到 external\\encoders\\x64。");
-        var tempDir = Path.Combine(Path.GetTempPath(), "HdrImageViewer", "jxl-gainmap-" + Guid.NewGuid().ToString("N"));
+        var tempDir = Path.Combine(Path.GetTempPath(), "qHdrImageViewer", "jxl-gainmap-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tempDir);
         var gainJxlPath = Path.Combine(tempDir, "gain.jxl");
         var gainPngPath = Path.Combine(tempDir, "gain.png");
@@ -216,6 +259,20 @@ internal static class JxlGainMapDecoder
     }
 
     private static async Task<JxlGainMapBox> ReadGainMapBoxAsync(string path, CancellationToken cancellationToken)
+    {
+        var bundle = await Task.Run(
+                () => JxlNativeDecoder.TryReadGainMapBox(path),
+                cancellationToken)
+            .ConfigureAwait(false);
+        if (bundle is not null)
+        {
+            return ParseGainMapBundle(bundle);
+        }
+
+        return await ReadGainMapBoxFromRawContainerAsync(path, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task<JxlGainMapBox> ReadGainMapBoxFromRawContainerAsync(string path, CancellationToken cancellationToken)
     {
         await using var stream = new FileStream(
             path,
@@ -300,10 +357,18 @@ internal static class JxlGainMapDecoder
             throw new InvalidOperationException("JPEG XL jhgm gain-map codestream is missing.");
         }
 
-        var hasColorEncoding = payload[offset++] != 0;
-        if (hasColorEncoding)
+        // Serialized as the packed JPEG XL bit-bundle size (0 when absent), not
+        // as a plain boolean. The alternate encoding is only metadata for the
+        // gain-map reconstruction, so skip it instead of rejecting the file.
+        var colorEncodingSize = payload[offset++];
+        if (colorEncodingSize > 0)
         {
-            throw new InvalidOperationException("JPEG XL jhgm gain maps with embedded alternate color encoding are not supported yet.");
+            if (offset + colorEncodingSize > payload.Length)
+            {
+                throw new InvalidOperationException("JPEG XL jhgm alternate color encoding is truncated.");
+            }
+
+            offset += colorEncodingSize;
         }
 
         if (offset + 4 > payload.Length)

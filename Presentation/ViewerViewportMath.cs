@@ -49,6 +49,105 @@ internal static class ViewerViewportMath
         return (height * aspectRatio, height);
     }
 
+    /// <summary>
+    /// Fit mode must not upscale an image past its native size: Windows Photos
+    /// shows small images at 100 % (one source pixel per physical display pixel)
+    /// centered in the viewport instead of stretching them to fill it. Returns
+    /// the fit-relative scale to apply to a fit-to-viewport size; 1.0 keeps the
+    /// plain fit size and smaller values cap it at the actual-size scale.
+    /// </summary>
+    public static double CalculateFitZoomTargetScale(double actualSizeScale)
+    {
+        if (!IsPositiveFinite(actualSizeScale))
+        {
+            return 1.0;
+        }
+
+        return Math.Min(1.0, actualSizeScale);
+    }
+
+    /// <summary>
+    /// Fit target size that never upscales beyond actual size, so a small image
+    /// opens at 100 % and only large images fill the viewport.
+    /// </summary>
+    public static (double Width, double Height) CalculateCappedFitSize(
+        double availableWidth,
+        double availableHeight,
+        double aspectRatio,
+        double actualSizeScale)
+    {
+        var (width, height) = CalculateFitSize(availableWidth, availableHeight, aspectRatio);
+        var scale = CalculateFitZoomTargetScale(actualSizeScale);
+        return (width * scale, height * scale);
+    }
+
+    /// <summary>
+    /// Returns the scrollable content extents for the image. An image that is
+    /// larger than the viewport keeps the existing image-sized extent; an image
+    /// that fits inside the viewport gets one viewport of drag slack on each
+    /// side so the ScrollViewer's panning can reposition it within the preview
+    /// instead of being locked to the center.
+    /// </summary>
+    public static (double Width, double Height) CalculateImageViewportSize(
+        double previewWidth,
+        double previewHeight,
+        double imageWidth,
+        double imageHeight)
+    {
+        return (
+            CalculateImageViewportExtent(previewWidth, imageWidth),
+            CalculateImageViewportExtent(previewHeight, imageHeight));
+    }
+
+    public static double CalculateImageViewportExtent(double previewExtent, double imageExtent)
+    {
+        if (!IsPositiveFinite(imageExtent))
+        {
+            return IsPositiveFinite(previewExtent) ? previewExtent : 0.0;
+        }
+
+        if (!IsPositiveFinite(previewExtent) || imageExtent >= previewExtent)
+        {
+            return imageExtent;
+        }
+
+        // Contained image: add the slack that lets a drag move it to either
+        // edge of the preview (centered offset is (extent - viewport) / 2).
+        return (2.0 * previewExtent) - imageExtent;
+    }
+
+    /// <summary>
+    /// Scroll offset that centers an image which is smaller than the viewport
+    /// inside the drag-slack content extent produced by
+    /// <see cref="CalculateImageViewportExtent"/>.
+    /// </summary>
+    public static double CalculateContainedImageCenterOffset(double imageExtent, double viewportExtent)
+    {
+        if (!IsPositiveFinite(imageExtent)
+            || !IsPositiveFinite(viewportExtent)
+            || imageExtent >= viewportExtent)
+        {
+            return 0.0;
+        }
+
+        return (CalculateImageViewportExtent(viewportExtent, imageExtent) - viewportExtent) / 2.0;
+    }
+
+    /// <summary>
+    /// Rounds a logical offset to a whole physical display pixel so 1:1
+    /// swap-chain content stays crisp while a contained image is dragged
+    /// (fractional layout positions would resample the presented frame).
+    /// </summary>
+    public static double SnapToPhysicalPixel(double logicalOffset, double compositionScale)
+    {
+        if (!double.IsFinite(logicalOffset) || !IsPositiveFinite(compositionScale))
+        {
+            return logicalOffset;
+        }
+
+        return Math.Round(logicalOffset * compositionScale, MidpointRounding.AwayFromZero) / compositionScale;
+    }
+
     public static double CalculatePointerAnchorBlend(double targetSize, double viewportSize)
     {
         if (targetSize <= 0.0 || viewportSize <= 1.0)
@@ -96,13 +195,37 @@ internal static class ViewerViewportMath
         return IsPositiveFinite(actualSizeScale) ? actualSizeScale : 1.0;
     }
 
-    public static double ClampUserZoomScale(double targetScale, double actualSizeScale)
+    /// <summary>
+    /// Clamps an interactive zoom scale to the 1 % .. <paramref name="maximumZoomScale"/>
+    /// range expressed in source pixels. <paramref name="maximumZoomScale"/> is the
+    /// maximum relative to actual size (8.0 = 800 %), matching MaxZoomPercent.
+    /// </summary>
+    public static double ClampUserZoomScale(
+        double targetScale,
+        double actualSizeScale,
+        double maximumZoomScale = 8.0)
     {
         if (!IsPositiveFinite(actualSizeScale)) return 1.0;
         if (double.IsNaN(targetScale)) return actualSizeScale;
 
+        var maximum = IsPositiveFinite(maximumZoomScale) ? maximumZoomScale : 8.0;
         // The interaction limits are relative to source pixels, not to fit mode.
-        return Math.Clamp(targetScale, actualSizeScale * 0.01, actualSizeScale * 8.0);
+        return Math.Clamp(targetScale, actualSizeScale * 0.01, actualSizeScale * maximum);
+    }
+
+    /// <summary>
+    /// Keeps a zoom-out from moving a fit-relative scale below fit-to-window.
+    /// When the current scale already sits below fit, the requested zoom-out is
+    /// treated as a no-op instead of snapping back up to fit.
+    /// </summary>
+    public static double ClampZoomOutToFit(double targetScale, double currentScale)
+    {
+        if (!double.IsFinite(targetScale) || !double.IsFinite(currentScale))
+        {
+            return targetScale;
+        }
+
+        return Math.Max(targetScale, Math.Min(currentScale, 1.0));
     }
 
     public static double CalculateZoomPercentage(double displayedWidth, double fitWidth, double actualSizeScale)
@@ -233,13 +356,22 @@ internal static class ViewerViewportMath
             return new ViewerSwapChainHostLayout(hostWidth, hostHeight, 1.0f, 1.0f, 0.0f, 0.0f);
         }
 
+        // The host is a sibling of the ScrollViewer, so it has to be placed at
+        // the panned position explicitly: visibleLeft - scrollX equals the
+        // image's on-screen left edge whenever the host is not covering the
+        // whole preview. Clamped because the ScrollViewer offset may be one
+        // frame stale right after a layout change.
+        var hostLeft = Math.Clamp(visibleLeft - scrollX, 0.0, Math.Max(0.0, previewWidth - hostWidth));
+        var hostTop = Math.Clamp(visibleTop - scrollY, 0.0, Math.Max(0.0, previewHeight - hostHeight));
         return new ViewerSwapChainHostLayout(
             hostWidth,
             hostHeight,
             (float)(imageWidth / hostWidth),
             (float)(imageHeight / hostHeight),
             (float)((imageLeft - visibleLeft) / hostWidth),
-            (float)((imageTop - visibleTop) / hostHeight));
+            (float)((imageTop - visibleTop) / hostHeight),
+            hostLeft,
+            hostTop);
     }
 
     public static ViewerVisibleImageLayout CalculateVisibleImageLayout(
@@ -276,7 +408,9 @@ internal readonly record struct ViewerSwapChainHostLayout(
     float ScaleX,
     float ScaleY,
     float OffsetX,
-    float OffsetY)
+    float OffsetY,
+    double HostLeft = 0.0,
+    double HostTop = 0.0)
 {
     public static ViewerSwapChainHostLayout Invalid { get; } = new(0.0, 0.0, 1.0f, 1.0f, 0.0f, 0.0f);
 
@@ -288,7 +422,9 @@ internal readonly record struct ViewerSwapChainHostLayout(
         && ScaleX > 0.0f
         && ScaleY > 0.0f
         && float.IsFinite(OffsetX)
-        && float.IsFinite(OffsetY);
+        && float.IsFinite(OffsetY)
+        && double.IsFinite(HostLeft)
+        && double.IsFinite(HostTop);
 
     public bool CoversPreview(double previewWidth, double previewHeight) =>
         HostWidth >= previewWidth - 0.5

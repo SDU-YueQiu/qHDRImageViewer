@@ -114,12 +114,14 @@ public sealed partial class D3D11HdrRenderPipeline
 
         _gainMapConstantsBuffer?.Dispose();
         _linearClampSampler?.Dispose();
+        _pointClampSampler?.Dispose();
         _linearizePixelShader?.Dispose();
         _baseImagePixelShader?.Dispose();
         _gainMapPixelShader?.Dispose();
         _gainMapVertexShader?.Dispose();
         _gainMapConstantsBuffer = null;
         _linearClampSampler = null;
+        _pointClampSampler = null;
         _linearizePixelShader = null;
         _baseImagePixelShader = null;
         _gainMapPixelShader = null;

@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$Configuration = 'Release',
     [ValidateSet('x64')]
     [string]$Platform = 'x64',
@@ -10,7 +10,7 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-$csproj = Join-Path $repo 'HdrImageViewer.csproj'
+$csproj = Join-Path $repo 'qHdrImageViewer.csproj'
 $testProject = Join-Path $repo 'tests\HdrImageViewer.Tests\HdrImageViewer.Tests.csproj'
 $artifactsDir = Join-Path $repo 'artifacts'
 $publishDir = Join-Path $artifactsDir "portable\win-$Platform"
@@ -21,7 +21,7 @@ if ([string]::IsNullOrWhiteSpace($Version)) {
 }
 
 if ([string]::IsNullOrWhiteSpace($Version)) {
-    throw 'Version was not provided and could not be read from HdrImageViewer.csproj.'
+    throw 'Version was not provided and could not be read from qHdrImageViewer.csproj.'
 }
 
 New-Item -ItemType Directory -Force $artifactsDir | Out-Null
@@ -61,15 +61,15 @@ try {
         --nologo
     if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed (exit $LASTEXITCODE)" }
 
-    $exe = Join-Path $publishDir 'HdrImageViewer.exe'
+    $exe = Join-Path $publishDir 'qHdrImageViewer.exe'
     if (-not (Test-Path $exe)) {
-        throw "Portable publish did not produce HdrImageViewer.exe: $exe"
+        throw "Portable publish did not produce qHdrImageViewer.exe: $exe"
     }
 
     $requiredRuntimeFiles = @(
         'App.xbf',
         'MainWindow.xbf',
-        'HdrImageViewer.pri',
+        'qHdrImageViewer.pri',
         'Pages\HomePage.xbf',
         'Pages\SettingsPage.xbf',
         'Assets\AppIcon.ico'
@@ -84,7 +84,7 @@ try {
     Copy-Item -LiteralPath (Join-Path $repo 'LICENSE') -Destination (Join-Path $publishDir 'LICENSE') -Force
     Copy-Item -LiteralPath (Join-Path $repo 'THIRD_PARTY_NOTICES.md') -Destination (Join-Path $publishDir 'THIRD_PARTY_NOTICES.md') -Force
 
-    $zip = Join-Path $artifactsDir "HdrImageViewer-$Version-win-$Platform-portable.zip"
+    $zip = Join-Path $artifactsDir "qHdrImageViewer-$Version-win-$Platform-portable.zip"
     Remove-Item -LiteralPath $zip -Force -ErrorAction SilentlyContinue
     Compress-Archive -Path (Join-Path $publishDir '*') -DestinationPath $zip -CompressionLevel Optimal -Force
 
