@@ -163,6 +163,8 @@
              Link="ZoomDownscaleMode.cs" />
     <Compile Include="..\..\Rendering\ViewerBackgroundMode.cs"
              Link="ViewerBackgroundMode.cs" />
+    <Compile Include="..\..\Rendering\HdrDisplayConfiguration.cs"
+             Link="HdrDisplayConfiguration.cs" />
     <Compile Include="..\..\Rendering\HdrHeadroomMode.cs"
              Link="HdrHeadroomMode.cs" />
     <Compile Include="..\..\Rendering\HdrColorMath.cs"

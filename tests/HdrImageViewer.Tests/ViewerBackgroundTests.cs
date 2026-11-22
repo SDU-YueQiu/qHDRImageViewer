@@ -1,3 +1,4 @@
+using System.Numerics;
 using HdrImageViewer.Rendering;
 using HdrImageViewer.Services;
 using Xunit;
@@ -49,12 +50,43 @@ public sealed class ViewerBackgroundTests
     [Fact]
     public void ToScRgb_KeepsAlphaOpaqueAndLinearisesChannels()
     {
-        var color = ViewerBackgroundPalette.ToScRgb(128, 0, 255);
+        var color = ViewerBackgroundPalette.ToScRgb(new Vector3(128 / 255f, 0.0f, 1.0f));
 
         Assert.Equal(0.2158f, color.X, 3);
         Assert.Equal(0.0f, color.Y);
         Assert.Equal(1.0f, color.Z, 3);
         Assert.Equal(1.0f, color.W);
+    }
+
+    [Theory]
+    [InlineData(80.0, 1.0)]
+    [InlineData(203.0, 2.5375)]
+    [InlineData(280.0, 3.5)]
+    public void ToScRgb_ScalesByTheDisplaySdrWhite(double sdrWhiteNits, double expectedScale)
+    {
+        var color = ViewerBackgroundPalette.ToScRgb(Vector3.One, (float)(sdrWhiteNits / 80.0));
+
+        Assert.Equal((float)expectedScale, color.X, 3);
+        Assert.Equal(1.0f, color.W);
+    }
+
+    [Fact]
+    public void BackgroundClear_MatchesTheSdrWhiteScaleOfAnHdrDisplay()
+    {
+        var hdr = new HdrDisplayConfiguration("Hdr", true, true, 203.0, 1000.0, 600.0, "test");
+        var sdr = new HdrDisplayConfiguration("Sdr", false, false, 80.0, 0.0, 0.0, "test");
+        var windowColor = new Vector3(243 / 255f);
+
+        Assert.Equal(2.5375f, hdr.SceneToSdrWhiteScale, 3);
+        Assert.Equal(1.0f, sdr.SceneToSdrWhiteScale, 3);
+
+        var hdrClear = ViewerBackgroundPalette.ToScRgb(windowColor, hdr.SceneToSdrWhiteScale);
+        var sdrClear = ViewerBackgroundPalette.ToScRgb(windowColor, sdr.SceneToSdrWhiteScale);
+
+        // The HDR clear has to be exactly the SDR white ratio brighter, which is
+        // what makes it land on the same apparent grey as the XAML backdrop.
+        Assert.Equal(0.896f, sdrClear.X, 3);
+        Assert.Equal(sdrClear.X * 2.5375f, hdrClear.X, 3);
     }
 
     [Theory]

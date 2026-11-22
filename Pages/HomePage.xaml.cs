@@ -3027,8 +3027,10 @@ public sealed partial class HomePage : Page
                 : Windows.UI.Color.FromArgb(0, 0, 0, 0);
         }
 
-        var changed = _renderer.SetBackgroundColor(
-            ViewerBackgroundPalette.ToScRgb(color.R, color.G, color.B));
+        var changed = _renderer.SetBackgroundColor(new System.Numerics.Vector3(
+            color.R / 255f,
+            color.G / 255f,
+            color.B / 255f));
         if (changed && redraw && IsLoaded && ViewModel.HasImage)
         {
             _ = PresentViewportAsync(_lifetimeToken);

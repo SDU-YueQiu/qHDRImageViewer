@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.6.0 - 2026-11-23
+
+- Fixed the grey/black surround that still appeared while zooming on an HDR-active display. The swap chain clear colour was linearised but not scaled to the display's SDR white level: the compositor maps scRGB 1.0 to 80 nits while the XAML backdrop is drawn at the user's SDR content brightness (200-300+ nits), so the clear looked 2-4x darker during the zoom animation and flipped back when it settled. The clear colour is now multiplied by `HdrDisplayConfiguration.SceneToSdrWhiteScale` (SDR white / 80 nits, 1.0 on SDR displays), i.e. the same factor the tone mapper uses for scene white. On the SDR test machine nothing changes; on an HDR display at 280 nit SDR white the previous (138, 138, 138) surround now lands on the same (243, 243, 243) as the window backdrop.
+- The viewer background setting introduced in 1.2.5 keeps working unchanged: Settings → 外观与语言 → 查看器背景 (窗口颜色 / 黑色 / 深灰 / 中灰 / 浅灰 / 白色).
+- Unit suite 639 passed / 1 skipped; new tests pin the sRGB→scRGB conversion, the SDR-white scaling (80 / 203 / 280 nit cases) and the HDR-vs-SDR clear ratio.
+
 ## 1.2.5.0 - 2026-11-23
 
 - Added a configurable viewer background: Settings → 外观与语言 → "查看器背景" offers 窗口颜色 / 黑色 / 深灰 / 中灰 / 浅灰 / 白色 (default: window colour). The choice paints the XAML layer behind the image **and** the value the D3D swap chain clears to (linear scRGB, so it matches on HDR displays too), and it follows light/dark theme changes in window-colour mode.

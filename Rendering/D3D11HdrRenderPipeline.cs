@@ -129,8 +129,9 @@ public sealed partial class D3D11HdrRenderPipeline : IHdrRenderPipeline, IDispos
 
     // Linear scRGB clear colour for the swap chain. It matches the viewer
     // backdrop so the letterbox stays the same colour while a zoom animation
-    // draws into the viewport-sized swap chain.
-    private Vector4 _backgroundColorScRgb = Vector4.Zero;
+    // draws into the viewport-sized swap chain. Stored as sRGB and converted at
+    // clear time because an HDR-active display needs the SDR-white scale.
+    private Vector3 _backgroundColorSrgb = Vector3.Zero;
     private GainmapViewMode _viewMode = GainmapViewMode.Adaptive;
     private HdrHeadroomMode _headroomMode = HdrHeadroomMode.SystemAdaptive;
     private bool _toneMappingEnabledForCurrentFrame;
@@ -232,29 +233,39 @@ public sealed partial class D3D11HdrRenderPipeline : IHdrRenderPipeline, IDispos
         _zoomDownscale);
 
     /// <summary>
-    /// Sets the linear scRGB colour the swap chain clears to; it mirrors the
-    /// viewer backdrop so a contained image keeps the same surround while the
+    /// Sets the sRGB colour (0..1 channels) the swap chain clears to; it mirrors
+    /// the viewer backdrop so a contained image keeps the same surround while the
     /// zoom animation renders into the viewport-sized swap chain. Returns true
     /// when the value changed.
     /// </summary>
-    public bool SetBackgroundColor(Vector4 scRgb)
+    public bool SetBackgroundColor(Vector3 srgb)
     {
-        var sanitized = new Vector4(
-            float.IsFinite(scRgb.X) ? Math.Max(0.0f, scRgb.X) : 0.0f,
-            float.IsFinite(scRgb.Y) ? Math.Max(0.0f, scRgb.Y) : 0.0f,
-            float.IsFinite(scRgb.Z) ? Math.Max(0.0f, scRgb.Z) : 0.0f,
-            1.0f);
-        if ((sanitized - _backgroundColorScRgb).LengthSquared() <= 1e-8f)
+        var sanitized = new Vector3(
+            float.IsFinite(srgb.X) ? Math.Clamp(srgb.X, 0.0f, 1.0f) : 0.0f,
+            float.IsFinite(srgb.Y) ? Math.Clamp(srgb.Y, 0.0f, 1.0f) : 0.0f,
+            float.IsFinite(srgb.Z) ? Math.Clamp(srgb.Z, 0.0f, 1.0f) : 0.0f);
+        if ((sanitized - _backgroundColorSrgb).LengthSquared() <= 1e-8f)
         {
             return false;
         }
 
-        _backgroundColorScRgb = sanitized;
+        _backgroundColorSrgb = sanitized;
         return true;
     }
 
-    private Color4 BackgroundClearColor =>
-        new(_backgroundColorScRgb.X, _backgroundColorScRgb.Y, _backgroundColorScRgb.Z, 1.0f);
+    private Color4 BackgroundClearColor
+    {
+        get
+        {
+            // On an HDR-active display the compositor maps scRGB 1.0 to 80 nits
+            // while the XAML backdrop is rendered at the display's SDR white
+            // level; scale by the same ratio so the two match.
+            var color = ViewerBackgroundPalette.ToScRgb(
+                _backgroundColorSrgb,
+                _displayConfiguration.SceneToSdrWhiteScale);
+            return new Color4(color.X, color.Y, color.Z, 1.0f);
+        }
+    }
 
     public bool ApplySettings(HdrRendererSettings settings)    {
         ArgumentNullException.ThrowIfNull(settings);
